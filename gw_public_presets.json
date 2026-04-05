@@ -1,0 +1,51 @@
+{
+  "schema": "gw_public_presets_v1",
+  "updated_at": "2026-04-05T18:30:00Z",
+  "notes": [
+    "Use these presets as fetch-and-freeze starting points for governed evidence ingestion.",
+    "GraceDB is strongest for low-latency analyst workflow context when the object is publicly accessible.",
+    "GWOSC is strongest for released, versioned public event metadata and should be preferred for archival reproducibility."
+  ],
+  "gracedb": [
+    {
+      "name": "S190425z",
+      "kind": "superevent",
+      "public_access": "unauthenticated",
+      "description": "Validated public GraceDB superevent with labels, logs, files, and VOEvents.",
+      "command": "d:/Manatuabon/.venv/Scripts/python.exe gracedb_snapshot_importer.py --superevent-id S190425z --force-noauth --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only",
+      "related_gwosc_event_version": "GW190425_081805-v1"
+    },
+    {
+      "name": "S241110br",
+      "kind": "superevent",
+      "public_access": "release-linked",
+      "description": "GraceDB superevent referenced by the GWOSC released event GW241110_124123-v1; unauthenticated event access may still vary by endpoint.",
+      "command": "d:/Manatuabon/.venv/Scripts/python.exe gracedb_snapshot_importer.py --superevent-id S241110br --force-noauth --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only",
+      "related_gwosc_event_version": "GW241110_124123-v1"
+    }
+  ],
+  "gwosc": [
+    {
+      "name": "GW241110_124123-v1",
+      "kind": "event_version",
+      "public_access": "public_release",
+      "description": "Versioned GWOSC event metadata with catalog/run IDs, GraceDB linkage, detector set, DOI, and follow-on URLs for parameters, timelines, and strain-file inventories.",
+      "url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1?format=api",
+      "parameters_url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1/parameters?format=api",
+      "timelines_url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1/timelines?format=api",
+      "strain_files_url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1/strain-files?format=api",
+      "grace_id": "S241110br"
+    },
+    {
+      "name": "GW190425_081805-v1",
+      "kind": "event_version",
+      "public_access": "public_release",
+      "description": "GWOSC released event associated with the publicly validated S190425z superevent.",
+      "url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1?format=api",
+      "parameters_url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1/parameters?format=api",
+      "timelines_url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1/timelines?format=api",
+      "strain_files_url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1/strain-files?format=api",
+      "grace_id": "S190425z"
+    }
+  ]
+}

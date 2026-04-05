@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manatuabon Observatory — Live Intelligence Dashboard</title>
+    <meta name="description" content="Real-time visualization of Manatuabon's autonomous astrophysics intelligence engine.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-deep: #080b14;
+            --bg-card: #0d1321;
+            --bg-card-hover: #111827;
+            --border: #1e293b;
+            --border-glow: #3b82f640;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #60a5fa;
+            --accent-cyan: #22d3ee;
+            --accent-violet: #a78bfa;
+            --accent-amber: #fbbf24;
+            --accent-green: #34d399;
+            --accent-red: #f87171;
+            --accent-pink: #f472b6;
+            --gradient-hero: linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #0c1220 100%);
+            --glow-blue: 0 0 20px #3b82f620, 0 0 40px #3b82f610;
+            --glow-violet: 0 0 20px #7c3aed20, 0 0 40px #7c3aed10;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: var(--gradient-hero);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+        .header .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+        .status-badge {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #065f4620;
+            border: 1px solid #34d39940;
+            color: var(--accent-green);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--accent-green); }
+            50% { opacity: 0.4; box-shadow: 0 0 12px var(--accent-green); }
+        }
+
+        /* ── STATS BAR ── */
+        .stats-bar {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            background: #0a0f1c;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .stat-chip {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.6rem 1.2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .stat-chip:hover {
+            border-color: var(--accent-blue);
+            box-shadow: var(--glow-blue);
+            transform: translateY(-1px);
+        }
+        .stat-chip .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .stat-chip .stat-label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── GRID ── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem 3rem;
+        }
+        @media (max-width: 1200px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--glow-blue);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, #111827 0%, var(--bg-card) 100%);
+        }
+        .card-header h2 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .card-header .card-badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: #1e293b;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .card-body {
+            padding: 1.5rem;
+            min-height: 320px;
+            position: relative;
+        }
+        .card-body canvas {
+            width: 100% !important;
+            max-height: 300px;
+        }
+
+        /* ── HYPOTHESIS LIST ── */
+        .hyp-list { list-style: none; }
+        .hyp-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #1e293b40;
+            transition: background 0.2s;
+        }
+        .hyp-item:hover { background: #ffffff05; margin: 0 -1.5rem; padding: 0.8rem 1.5rem; }
+        .hyp-item:last-child { border-bottom: none; }
+        .hyp-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .hyp-icon.founding { background: #7c3aed20; color: var(--accent-violet); }
+        .hyp-icon.auto { background: #22d3ee20; color: var(--accent-cyan); }
+        .hyp-icon.promoted { background: #34d39920; color: var(--accent-green); }
+        .hyp-icon.flagged { background: #f8717120; color: var(--accent-red); }
+        .hyp-title { font-size: 0.82rem; font-weight: 500; line-height: 1.4; }
+        .hyp-meta {
+            font-size: 0.68rem; color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .hyp-status {
+            font-size: 0.62rem; padding: 0.15rem 0.5rem;
+            border-radius: 999px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .hyp-status.active { background: #3b82f620; color: var(--accent-blue); }
+        .hyp-status.promoted { background: #34d39920; color: var(--accent-green); }
+        .hyp-status.flagged { background: #f8717120; color: var(--accent-red); }
+
+        /* ── NETWORK GRAPH ── */
+        .network-canvas-wrap {
+            width: 100%; height: 300px; position: relative;
+        }
+        #networkCanvas {
+            width: 100%; height: 100%;
+            border-radius: 8px;
+            background: #060a12;
+        }
+
+        /* ── SKY MAP ── */
+        #skymapCanvas {
+            width: 100%; height: 100%;
+            border-radius: 8px;
+            background: #060a12;
+        }
+
+        /* ── LOADING ── */
+        .loading {
+            display: flex; align-items: center; justify-content: center;
+            height: 200px; flex-direction: column; gap: 1rem;
+        }
+        .loading-spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ── FOOTER ── */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            border-top: 1px solid var(--border);
+        }
+        .footer a { color: var(--accent-violet); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="header-left">
+        <div>
+            <h1>🌌 Manatuabon Observatory</h1>
+            <div class="subtitle">Live Intelligence Dashboard · Phase 15</div>
+        </div>
+    </div>
+    <div class="status-badge" id="statusBadge">
+        <div class="status-dot"></div>
+        <span>Connecting...</span>
+    </div>
+</header>
+
+<div class="stats-bar" id="statsBar">
+    <div class="stat-chip"><div><div class="stat-value" id="statMemories" style="color: var(--accent-blue);">—</div><div class="stat-label">Memories</div></div></div>
+    <div class="stat-chip"><div><div class="stat-value" id="statHypotheses" style="color: var(--accent-violet);">—</div><div class="stat-label">Hypotheses</div></div></div>
+    <div class="stat-chip"><div><div class="stat-value" id="statQueue" style="color: var(--accent-cyan);">—</div><div class="stat-label">MAST Queue</div></div></div>
+    <div class="stat-chip"><div><div class="stat-value" id="statDone" style="color: var(--accent-green);">—</div><div class="stat-label">Completed</div></div></div>
+    <div class="stat-chip"><div><div class="stat-value" id="statSkyTargets" style="color: var(--accent-amber);">—</div><div class="stat-label">Sky Targets</div></div></div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- 1. Observation Timeline -->
+    <div class="card">
+        <div class="card-header">
+            <h2>📡 Observation Timeline</h2>
+            <span class="card-badge" id="timelineBadge">loading</span>
+        </div>
+        <div class="card-body">
+            <canvas id="timelineChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 2. Sky Map -->
+    <div class="card">
+        <div class="card-header">
+            <h2>🗺️ Sky Map (RA / Dec)</h2>
+            <span class="card-badge" id="skymapBadge">loading</span>
+        </div>
+        <div class="card-body">
+            <canvas id="skymapCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- 3. Hypothesis Dashboard -->
+    <div class="card">
+        <div class="card-header">
+            <h2>🧬 Hypothesis Dashboard</h2>
+            <span class="card-badge" id="hypBadge">loading</span>
+        </div>
+        <div class="card-body" style="overflow-y: auto; max-height: 400px;">
+            <ul class="hyp-list" id="hypList">
+                <li class="loading"><div class="loading-spinner"></div><div class="loading-text">Loading hypotheses...</div></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 4. Memory Network -->
+    <div class="card">
+        <div class="card-header">
+            <h2>🕸️ Memory Network</h2>
+            <span class="card-badge" id="networkBadge">loading</span>
+        </div>
+        <div class="card-body">
+            <div class="network-canvas-wrap">
+                <canvas id="networkCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    Manatuabon Observatory &middot; Danny from <a href="#">Bayamón, PR 🇵🇷</a> &middot; Phase 15 &middot; March 2026
+</footer>
+
+<script>
+const API_BASE = 'http://127.0.0.1:7777';
+
+// ── Utility ──
+async function fetchJSON(path) {
+    try {
+        const res = await fetch(`${API_BASE}${path}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        console.error(`Failed to fetch ${path}:`, e);
+        return null;
+    }
+}
+
+// ── Status ──
+async function loadStatus() {
+    const data = await fetchJSON('/status');
+    const badge = document.getElementById('statusBadge');
+    if (data && data.running) {
+        badge.innerHTML = '<div class="status-dot"></div><span>Agent Online</span>';
+        document.getElementById('statMemories').textContent = data.memories || 0;
+        document.getElementById('statHypotheses').textContent = (data.auto_hypotheses || 0) + (data.founding_hypotheses || 0);
+    } else {
+        badge.innerHTML = '<span style="color:var(--accent-red);">Offline</span>';
+        badge.style.borderColor = '#f8717140';
+        badge.style.background = '#f8717110';
+    }
+}
+
+// ── 1. Observation Timeline ──
+async function loadTimeline() {
+    const data = await fetchJSON('/api/viz/timeline');
+    const badge = document.getElementById('timelineBadge');
+    if (!data || data.length === 0) {
+        badge.textContent = 'no data';
+        return;
+    }
+
+    const doneCount = data.filter(d => d.status === 'done').length;
+    document.getElementById('statQueue').textContent = data.length;
+    document.getElementById('statDone').textContent = doneCount;
+    badge.textContent = `${data.length} jobs`;
+
+    // Group by status
+    const labels = data.map(d => d.target || `#${d.id}`).slice(-20);
+    const statuses = data.map(d => d.status).slice(-20);
+    const colors = statuses.map(s => ({
+        'done': '#34d399', 'failed': '#f87171', 'running': '#fbbf24', 'pending': '#60a5fa'
+    }[s] || '#64748b'));
+
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Status',
+                data: statuses.map(s => ({'done':3,'running':2,'pending':1,'failed':0}[s]||0)),
+                backgroundColor: colors,
+                borderRadius: 4,
+                barThickness: 18,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => statuses[ctx.dataIndex]
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b30' } },
+                y: {
+                    ticks: {
+                        color: '#64748b', font: { size: 10 },
+                        callback: v => ['failed','pending','running','done'][v] || ''
+                    },
+                    grid: { color: '#1e293b30' },
+                    min: -0.5, max: 3.5
+                }
+            }
+        }
+    });
+}
+
+// ── 2. Sky Map ──
+async function loadSkymap() {
+    const data = await fetchJSON('/api/viz/skymap');
+    const badge = document.getElementById('skymapBadge');
+    if (!data || data.length === 0) {
+        badge.textContent = 'no data';
+        return;
+    }
+
+    document.getElementById('statSkyTargets').textContent = data.length;
+    badge.textContent = `${data.length} targets`;
+
+    const canvas = document.getElementById('skymapCanvas');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = 300;
+
+    // Draw grid
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 10; i++) {
+        const x = (i / 10) * canvas.width;
+        const y = (i / 10) * canvas.height;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+
+    // Axis labels
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillText('RA 0°', 4, canvas.height - 4);
+    ctx.fillText('RA 360°', canvas.width - 48, canvas.height - 4);
+    ctx.fillText('Dec +90°', 4, 14);
+    ctx.fillText('Dec -90°', 4, canvas.height - 16);
+
+    // Plot targets
+    data.forEach((pt, i) => {
+        const x = (pt.ra / 360) * canvas.width;
+        const y = ((90 - pt.dec) / 180) * canvas.height;
+        const radius = Math.max(4, Math.min(12, Math.log(pt.obs_count + 1) * 3));
+
+        // Glow effect
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius * 3);
+        const colors = ['#22d3ee', '#60a5fa', '#a78bfa', '#f472b6', '#fbbf24'];
+        const color = colors[i % colors.length];
+        grad.addColorStop(0, color + '80');
+        grad.addColorStop(1, color + '00');
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 3, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Star point
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = color + '60';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px Inter';
+        ctx.fillText(pt.target, x + radius + 4, y + 3);
+    });
+}
+
+// ── 3. Hypothesis Dashboard ──
+async function loadHypotheses() {
+    const data = await fetchJSON('/api/viz/hypotheses');
+    const badge = document.getElementById('hypBadge');
+    const list = document.getElementById('hypList');
+    if (!data || data.length === 0) {
+        badge.textContent = 'none';
+        list.innerHTML = '<li style="color:var(--text-muted);padding:2rem;text-align:center;">No hypotheses yet.</li>';
+        return;
+    }
+
+    badge.textContent = `${data.length} active`;
+    list.innerHTML = '';
+
+    data.forEach(h => {
+        const type = h.type || 'auto';
+        const status = h.status || 'active';
+        const iconClass = status === 'promoted' ? 'promoted' : status === 'flagged' ? 'flagged' : type;
+        const icon = status === 'promoted' ? '⬆' : status === 'flagged' ? '⚠' : type === 'founding' ? '🔬' : '🤖';
+        
+        const li = document.createElement('li');
+        li.className = 'hyp-item';
+        li.innerHTML = `
+            <div class="hyp-icon ${iconClass}">${icon}</div>
+            <div style="flex:1;">
+                <div class="hyp-title">${h.title || h.id}</div>
+                <div class="hyp-meta">${h.id || ''} · ${h.type || 'unknown'}</div>
+            </div>
+            <span class="hyp-status ${status}">${status}</span>
+        `;
+        list.appendChild(li);
+    });
+}
+
+// ── 4. Memory Network ──
+async function loadNetwork() {
+    const data = await fetchJSON('/api/viz/network');
+    const badge = document.getElementById('networkBadge');
+    if (!data || (!data.nodes?.length)) {
+        badge.textContent = 'no data';
+        return;
+    }
+
+    badge.textContent = `${data.nodes.length} nodes · ${data.edges.length} edges`;
+
+    const canvas = document.getElementById('networkCanvas');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = 300;
+
+    const W = canvas.width, H = canvas.height;
+
+    // Layout: simple force-based placement
+    const nodePositions = {};
+    const memNodes = data.nodes.filter(n => n.group === 'memory');
+    const hypNodes = data.nodes.filter(n => n.group === 'hypothesis');
+
+    // Place hypothesis nodes in a ring at center
+    hypNodes.forEach((n, i) => {
+        const angle = (i / Math.max(hypNodes.length, 1)) * Math.PI * 2;
+        nodePositions[n.id] = {
+            x: W / 2 + Math.cos(angle) * (W * 0.25),
+            y: H / 2 + Math.sin(angle) * (H * 0.3),
+            ...n
+        };
+    });
+
+    // Place memory nodes in outer ring
+    memNodes.forEach((n, i) => {
+        const angle = (i / Math.max(memNodes.length, 1)) * Math.PI * 2 + 0.3;
+        nodePositions[n.id] = {
+            x: W / 2 + Math.cos(angle) * (W * 0.42),
+            y: H / 2 + Math.sin(angle) * (H * 0.42),
+            ...n
+        };
+    });
+
+    // Draw edges
+    ctx.globalAlpha = 0.3;
+    data.edges.forEach(e => {
+        const src = nodePositions[e.source];
+        const tgt = nodePositions[e.target];
+        if (!src || !tgt) return;
+
+        ctx.beginPath();
+        ctx.moveTo(src.x, src.y);
+        ctx.lineTo(tgt.x, tgt.y);
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+
+    // Draw nodes
+    Object.values(nodePositions).forEach(n => {
+        const isHyp = n.group === 'hypothesis';
+        const r = isHyp ? 10 : 5;
+        const color = isHyp ? '#a78bfa' : '#60a5fa';
+
+        // Glow
+        const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3);
+        grad.addColorStop(0, color + '40');
+        grad.addColorStop(1, color + '00');
+        ctx.beginPath(); ctx.arc(n.x, n.y, r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = grad; ctx.fill();
+
+        // Node
+        ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+
+        // Label (only hypotheses)
+        if (isHyp) {
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '9px Inter';
+            ctx.fillText(n.label || '', n.x + r + 3, n.y + 3);
+        }
+    });
+}
+
+// ── INIT ──
+async function init() {
+    await loadStatus();
+    await Promise.all([
+        loadTimeline(),
+        loadSkymap(),
+        loadHypotheses(),
+        loadNetwork(),
+    ]);
+
+    // Auto-refresh every 30s
+    setInterval(async () => {
+        await loadStatus();
+    }, 30000);
+}
+
+init();
+</script>
+</body>
+</html>

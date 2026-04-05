@@ -1,0 +1,10 @@
+aiohttp==3.13.5
+astroquery==0.4.11
+langchain-anthropic==1.4.0
+langchain-community==0.4.1
+langchain-openai==1.1.12
+numpy==2.4.4
+python-dotenv==1.2.2
+requests==2.33.1
+sentence-transformers==5.3.0
+watchdog==6.0.0
