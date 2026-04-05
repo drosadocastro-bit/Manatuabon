@@ -35,7 +35,9 @@ The design intent is simple: external evidence is frozen first, normalized secon
 - `arxiv_snapshot_importer.py`: fetch-and-freeze arXiv metadata snapshots with optional direct DB ingest.
 - `gracedb_snapshot_importer.py`: fetch-and-freeze GraceDB event and superevent snapshots with optional direct DB ingest.
 - `gwosc_snapshot_importer.py`: fetch-and-freeze GWOSC released event-version snapshots with optional direct DB ingest.
+- `openuniverse_snapshot_importer.py`: ingest synthetic dataset manifests as anomaly-detection benchmark bundles without treating them as direct observational evidence.
 - `gw_public_presets.json`: public gravitational-wave fetch presets for validated GraceDB and GWOSC entry points.
+- `synthetic_data_presets.json`: synthetic benchmark presets for anomaly-detection and calibration workflows.
 
 ## Quick Start
 
@@ -76,7 +78,21 @@ python .\arxiv_snapshot_importer.py --query 'all:"gravitational wave"+AND+submit
 python .\gracedb_snapshot_importer.py --superevent-id S190425z --force-noauth --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only
 
 python .\gwosc_snapshot_importer.py --event-version GW241110_124123-v1 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only
+
+python .\openuniverse_snapshot_importer.py --dataset openuniverse2024 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest
 ```
+
+## Synthetic Anomaly Benchmarks
+
+Manatuabon now supports a separate synthetic-data ingest path for anomaly detection work. This is for simulation products such as OpenUniverse, where the right use is benchmarking, calibration, and false-positive control rather than claim support.
+
+The importer writes a structured bundle with explicit synthetic-data context and defaults to no new hypothesis generation.
+
+Recommended uses:
+
+- test Roman versus Rubin cross-survey anomaly features before applying them to real observations
+- benchmark image and catalog alignment logic against known synthetic inputs
+- calibrate anomaly scoring thresholds without contaminating council evidence tiers
 
 ## Testing
 
@@ -87,6 +103,7 @@ The CI suite currently runs:
 - `test_arxiv_snapshot_importer.py`
 - `test_gracedb_snapshot_importer.py`
 - `test_gwosc_snapshot_importer.py`
+- `test_openuniverse_snapshot_importer.py`
 - `test_pulsar_glitch_importer.py`
 - `test_pulsar_recovery_paper_importer.py`
 - `test_council_evidence_policy.py`
@@ -107,6 +124,7 @@ Run the deterministic suite locally with:
 python .\test_arxiv_snapshot_importer.py
 python .\test_gracedb_snapshot_importer.py
 python .\test_gwosc_snapshot_importer.py
+python .\test_openuniverse_snapshot_importer.py
 python .\test_pulsar_glitch_importer.py
 python .\test_pulsar_recovery_paper_importer.py
 python .\test_council_evidence_policy.py
@@ -123,3 +141,4 @@ python .\test_watcher_handler.py
 - Structured evidence bundles do not require LLM parsing and are preferred for auditable ingest.
 - GraceDB is useful for analyst workflow context when public objects are accessible.
 - GWOSC is preferable for released, DOI-backed public gravitational-wave metadata.
+- OpenUniverse-style synthetic datasets are best used for anomaly-detection benchmarking and pipeline calibration, not as direct council evidence.

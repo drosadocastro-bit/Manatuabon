@@ -1,0 +1,18 @@
+{
+  "schema": "synthetic_data_presets_v1",
+  "updated_at": "2026-04-05T19:05:00Z",
+  "notes": [
+    "These presets are for synthetic and simulated datasets used to benchmark anomaly detection, cross-survey alignment, and calibration workflows.",
+    "They should be ingested as evidence-only or synthetic benchmark inputs, not as direct observational support for council decisions."
+  ],
+  "openuniverse": [
+    {
+      "name": "openuniverse2024",
+      "kind": "synthetic_dataset_manifest",
+      "description": "OpenUniverse 2024 simulated Roman and Rubin imaging benchmark for anomaly detection and cross-survey validation.",
+      "manifest_url": "https://raw.githubusercontent.com/awslabs/open-data-registry/main/datasets/openuniverse2024.yaml",
+      "registry_url": "https://registry.opendata.aws/openuniverse2024",
+      "command": "d:/Manatuabon/.venv/Scripts/python.exe openuniverse_snapshot_importer.py --dataset openuniverse2024 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest"
+    }
+  ]
+}

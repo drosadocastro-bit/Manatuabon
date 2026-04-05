@@ -35,6 +35,7 @@ jobs:
             'test_arxiv_snapshot_importer.py'
             'test_gracedb_snapshot_importer.py'
             'test_gwosc_snapshot_importer.py'
+            'test_openuniverse_snapshot_importer.py'
             'test_pulsar_glitch_importer.py'
             'test_pulsar_recovery_paper_importer.py'
             'test_council_evidence_policy.py'
