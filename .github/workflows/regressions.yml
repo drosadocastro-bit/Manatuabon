@@ -1,0 +1,51 @@
+name: Regressions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  deterministic-regressions:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run deterministic regression suite
+        shell: pwsh
+        run: |
+          $tests = @(
+            'test_arxiv_snapshot_importer.py'
+            'test_gracedb_snapshot_importer.py'
+            'test_gwosc_snapshot_importer.py'
+            'test_pulsar_glitch_importer.py'
+            'test_pulsar_recovery_paper_importer.py'
+            'test_council_evidence_policy.py'
+            'test_council_evidence_requests.py'
+            'test_council_quant_reviewer.py'
+            'test_council_reflection.py'
+            'test_council_graph.py'
+            'test_watcher_handler.py'
+          )
+
+          foreach ($test in $tests) {
+            Write-Host "Running $test"
+            python $test
+          }
