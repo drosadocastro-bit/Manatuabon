@@ -1,5 +1,7 @@
 # Manatuabon
 
+[![Regressions](https://github.com/drosadocastro-bit/Manatuabon/actions/workflows/regressions.yml/badge.svg)](https://github.com/drosadocastro-bit/Manatuabon/actions/workflows/regressions.yml)
+
 Manatuabon is an offline-first, human-governed astrophysics reasoning workspace. It combines structured evidence ingest, a hypothesis council, and a local memory/database layer so new material can be reviewed with provenance instead of being treated as autonomous truth.
 
 ## Core Direction
@@ -7,6 +9,22 @@ Manatuabon is an offline-first, human-governed astrophysics reasoning workspace.
 - Offline-first by default: the runtime is designed to keep working with local models, local SQLite state, and fetch-and-freeze evidence snapshots.
 - Governed review instead of freeform synthesis: hypotheses pass through explicit review agents and evidence policy checks.
 - Provenance-rich ingest: external sources are normalized into `structured_ingest_v1` bundles before entering the memory system.
+
+## Architecture
+
+```mermaid
+flowchart LR
+	A[arXiv / GraceDB / GWOSC / Local bundles] --> B[Snapshot importers]
+	B --> C[Raw snapshot artifacts]
+	B --> D[structured_ingest_v1 bundles]
+	D --> E[IngestAgent]
+	E --> F[(SQLite memory and hypotheses)]
+	F --> G[Hypothesis council]
+	G --> H[Governed decisions and evidence requests]
+	F --> I[Bridge and UI surfaces]
+```
+
+The design intent is simple: external evidence is frozen first, normalized second, and only then allowed to influence memory or hypothesis review.
 
 ## Main Components
 
