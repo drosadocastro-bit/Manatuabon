@@ -30,22 +30,24 @@
       "kind": "event_version",
       "public_access": "public_release",
       "description": "Versioned GWOSC event metadata with catalog/run IDs, GraceDB linkage, detector set, DOI, and follow-on URLs for parameters, timelines, and strain-file inventories.",
-      "url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1?format=api",
+      "url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1?format=json",
       "parameters_url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1/parameters?format=api",
       "timelines_url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1/timelines?format=api",
       "strain_files_url": "https://gwosc.org/api/v2/event-versions/GW241110_124123-v1/strain-files?format=api",
-      "grace_id": "S241110br"
+      "grace_id": "S241110br",
+      "command": "d:/Manatuabon/.venv/Scripts/python.exe gwosc_snapshot_importer.py --event-version GW241110_124123-v1 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
     },
     {
       "name": "GW190425_081805-v1",
       "kind": "event_version",
       "public_access": "public_release",
       "description": "GWOSC released event associated with the publicly validated S190425z superevent.",
-      "url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1?format=api",
+      "url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1?format=json",
       "parameters_url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1/parameters?format=api",
       "timelines_url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1/timelines?format=api",
       "strain_files_url": "https://gwosc.org/api/v2/event-versions/GW190425_081805-v1/strain-files?format=api",
-      "grace_id": "S190425z"
+      "grace_id": "S190425z",
+      "command": "d:/Manatuabon/.venv/Scripts/python.exe gwosc_snapshot_importer.py --event-version GW190425_081805-v1 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
     }
   ]
 }
