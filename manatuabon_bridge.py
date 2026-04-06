@@ -339,6 +339,9 @@ async def handle_review_evidence_request(request):
     except Exception as e:
         log.error("review-evidence-request error: %s", e)
         return json_response({"error": "Internal server error"}, status=500)
+
+
+async def handle_generate_memory_link_proposals(request):
     """POST /api/memory-link-proposals/generate → create bounded review proposals."""
     try:
         body = await request.json() if request.can_read_body else {}
@@ -352,6 +355,9 @@ async def handle_review_evidence_request(request):
     except Exception as e:
         log.error("generate-memory-link-proposals error: %s", e)
         return json_response({"error": "Internal server error"}, status=500)
+
+
+async def handle_review_memory_link_proposal(request):
     """POST /api/memory-link-proposals/review → approve or reject a proposal."""
     try:
         body = await request.json()
@@ -372,6 +378,9 @@ async def handle_review_evidence_request(request):
     except Exception as e:
         log.error("review-memory-link-proposal error: %s", e)
         return json_response({"error": "Internal server error"}, status=500)
+
+
+async def handle_query(request):
     """GET/POST /query → Nemotron answers with memory context."""
     messages = []
     query = ""
@@ -488,6 +497,9 @@ async def handle_all_hypotheses(request):
     except Exception as e:
         log.error("all-hypotheses error: %s", e)
         return json_response({"error": "Internal server error"}, status=500)
+
+
+async def handle_agent_log(request):
     """GET /agent_log → last 50 activities."""
     entries = _agent_log.recent(50)
     return json_response(entries)
@@ -776,6 +788,9 @@ async def handle_council_override(request):
     except Exception as e:
         log.error("council-override error: %s", e)
         return json_response({"error": "Internal server error"}, status=500)
+
+
+async def handle_council_reprocess(request):
     """POST /api/council/reprocess → backfill council audits for legacy hypotheses."""
     try:
         council = get_council()

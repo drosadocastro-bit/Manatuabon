@@ -2525,6 +2525,16 @@ class ConsolidateAgent:
         except Exception as e:
             log.warning(f"Hypothesis evolution check failed: {e}")
 
+        # Evidence Hunter: actively search for evidence to satisfy pending requests
+        try:
+            from evidence_hunter import EvidenceHunter
+            hunter = EvidenceHunter(self.memory, self.agent_log)
+            hunt_result = hunter.hunt()
+            if hunt_result.get("requests_satisfied"):
+                log.info("Evidence Hunter satisfied %d request(s)", hunt_result["requests_satisfied"])
+        except Exception as e:
+            log.warning(f"Evidence Hunter failed: {e}")
+
         # Review Council: re-evaluate any 'held' hypotheses from prior cycles
         if self.council:
             try:
