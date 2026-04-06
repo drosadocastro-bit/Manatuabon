@@ -32,6 +32,18 @@ jobs:
         shell: pwsh
         run: |
           $tests = @(
+            'test_anomaly_benchmark_worker.py'
+            'test_cross_survey_catalog_anomaly_worker.py'
+            'test_gaia_panstarrs_anomaly_worker.py'
+            'test_gaia_snapshot_importer.py'
+            'test_gaia_sdss_anomaly_worker.py'
+            'test_gaia_ztf_anomaly_worker.py'
+            'test_mast_snapshot_importer.py'
+            'test_panstarrs_snapshot_importer.py'
+            'test_sdss_snapshot_importer.py'
+            'test_openuniverse_catalog_normalizer.py'
+            'test_openuniverse_catalog_pipeline.py'
+            'test_ztf_snapshot_importer.py'
             'test_arxiv_snapshot_importer.py'
             'test_gracedb_snapshot_importer.py'
             'test_gwosc_snapshot_importer.py'
@@ -44,6 +56,9 @@ jobs:
             'test_council_reflection.py'
             'test_council_graph.py'
             'test_watcher_handler.py'
+            'test_replay_manifest.py'
+            'test_analysis_export.py'
+            'test_extinction_lookup.py'
           )
 
           foreach ($test in $tests) {

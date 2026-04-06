@@ -1,5 +1,9 @@
 aiohttp==3.13.5
 astroquery==0.4.11
+# dustmaps — optional: provides accurate per-sightline E(B-V) via SFD98 maps.
+# Requires ~300 MB map data download (dustmaps.sfd.fetch()).  Without it the
+# extinction_lookup module uses an analytical csc(|b|) fallback.
+# dustmaps==1.0.14
 langchain-anthropic==1.4.0
 langchain-community==0.4.1
 langchain-openai==1.1.12

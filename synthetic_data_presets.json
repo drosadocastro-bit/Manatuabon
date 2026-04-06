@@ -1,9 +1,10 @@
 {
   "schema": "synthetic_data_presets_v1",
-  "updated_at": "2026-04-05T19:05:00Z",
+  "updated_at": "2026-04-05T21:05:00Z",
   "notes": [
     "These presets are for synthetic and simulated datasets used to benchmark anomaly detection, cross-survey alignment, and calibration workflows.",
-    "They should be ingested as evidence-only or synthetic benchmark inputs, not as direct observational support for council decisions."
+    "They should be ingested as evidence-only or synthetic benchmark inputs, not as direct observational support for council decisions.",
+    "Claude API usage in this repo is prompt-bounded; online knowledge must be fetched explicitly by Manatuabon and then supplied to the model."
   ],
   "openuniverse": [
     {
@@ -12,7 +13,11 @@
       "description": "OpenUniverse 2024 simulated Roman and Rubin imaging benchmark for anomaly detection and cross-survey validation.",
       "manifest_url": "https://raw.githubusercontent.com/awslabs/open-data-registry/main/datasets/openuniverse2024.yaml",
       "registry_url": "https://registry.opendata.aws/openuniverse2024",
-      "command": "d:/Manatuabon/.venv/Scripts/python.exe openuniverse_snapshot_importer.py --dataset openuniverse2024 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest"
+      "command": "d:/Manatuabon/.venv/Scripts/python.exe openuniverse_snapshot_importer.py --dataset openuniverse2024 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest",
+      "anomaly_benchmark_command_template": "d:/Manatuabon/.venv/Scripts/python.exe anomaly_benchmark_worker.py --bundle <openuniverse_snapshot_bundle_json> --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest",
+      "catalog_normalizer_command_template": "d:/Manatuabon/.venv/Scripts/python.exe openuniverse_catalog_normalizer.py --input <openuniverse_catalog_export.json> --catalog-name <Roman|Rubin|Truth> --out-dir D:/Manatuabon/data --format both",
+      "catalog_anomaly_command_template": "d:/Manatuabon/.venv/Scripts/python.exe cross_survey_catalog_anomaly_worker.py --left <roman_catalog.csv> --right <rubin_catalog.csv> --truth <truth_catalog.csv> --left-name Roman --right-name Rubin --truth-name Truth --max-sep-arcsec 1.0 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest",
+      "catalog_pipeline_command_template": "d:/Manatuabon/.venv/Scripts/python.exe openuniverse_catalog_pipeline.py --roman <roman_export.json> --rubin <rubin_export.json> --truth <truth_export.json> --out-dir D:/Manatuabon/data --normalized-format both --max-sep-arcsec 1.0 --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest"
     }
   ]
 }

@@ -1774,7 +1774,7 @@
         <div class="data-subpanel active" id="dsub-ligo">
           <div class="data-stats-row" id="ligo-stats"></div>
           <div class="data-chart-wrap"><canvas id="ligo-chart"></canvas></div>
-          <button class="analyze-btn" onclick="analyzeDataset('ligo')">🤖 Analyze with AI</button>
+          <button class="analyze-btn" onclick="analyzeDataset('ligo')">🤖 Analyze Now</button>
           <div class="data-table-wrap">
             <table class="data-table" id="ligo-table"></table>
           </div>
@@ -1782,7 +1782,7 @@
         <div class="data-subpanel" id="dsub-pulsars">
           <div class="data-stats-row" id="pulsar-stats"></div>
           <div class="data-chart-wrap"><canvas id="pulsar-chart"></canvas></div>
-          <button class="analyze-btn" onclick="analyzeDataset('pulsars')">🤖 Analyze with AI</button>
+          <button class="analyze-btn" onclick="analyzeDataset('pulsars')">🤖 Analyze Now</button>
           <div class="data-table-wrap">
             <table class="data-table" id="pulsar-table"></table>
           </div>
@@ -1790,7 +1790,7 @@
         <div class="data-subpanel" id="dsub-sdss">
           <div class="data-stats-row" id="sdss-stats"></div>
           <div class="data-chart-wrap"><canvas id="sdss-chart"></canvas></div>
-          <button class="analyze-btn" onclick="analyzeDataset('sdss')">🤖 Analyze with AI</button>
+          <button class="analyze-btn" onclick="analyzeDataset('sdss')">🤖 Analyze Now</button>
           <div class="data-table-wrap">
             <table class="data-table" id="sdss-table"></table>
           </div>
@@ -1798,7 +1798,7 @@
         <div class="data-subpanel" id="dsub-gaia">
           <div class="data-stats-row" id="gaia-stats"></div>
           <div class="data-chart-wrap"><canvas id="gaia-chart"></canvas></div>
-          <button class="analyze-btn" onclick="analyzeDataset('gaia')">🤖 Analyze with AI</button>
+          <button class="analyze-btn" onclick="analyzeDataset('gaia')">🤖 Analyze Now</button>
           <div class="data-table-wrap">
             <table class="data-table" id="gaia-table"></table>
           </div>
@@ -1810,7 +1810,7 @@
             <div class="data-stat"><div class="label">Latest Probe</div><div class="value" id="transient-last-date">—</div></div>
           </div>
           <div class="data-chart-wrap" style="height:350px; max-height:none;"><canvas id="transient-chart"></canvas></div>
-          <button class="analyze-btn" onclick="analyzeDataset('high-energy transients')">🤖 Analyze Flux Patterns</button>
+          <button class="analyze-btn" onclick="analyzeDataset('high-energy transients')">🤖 Analyze Flux Now</button>
           <div class="data-table-wrap">
             <table class="data-table" id="transient-table"></table>
           </div>
@@ -1875,7 +1875,7 @@
           <div style="display:flex;gap:12px;margin-top:8px;">
             <button class="btn-primary" id="btn-simulate" onclick="runCanvasRayMarch()">⚫ SIMULATE</button>
             <button class="btn-secondary" onclick="exportSimRender()">📸 Save Render</button>
-            <button class="btn-secondary" onclick="analyzeSim()">🤖 Analyze Frame</button>
+            <button class="btn-secondary" onclick="analyzeSim()">🤖 Analyze Frame Now</button>
           </div>
         </div>
         <div class="sim-controls">
@@ -4426,19 +4426,34 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
       }
     });
 
-    // "Analyze w AI" buttons on Data tab
-    window.analyzeDataset = function (dsName) {
+    function runJournalAnalysis(prompt, label) {
       document.querySelector('[data-tab="journal"]').click();
-      chatInput.value = `I am reviewing the ${dsName.toUpperCase()} dataset embedded in Manatuabon. What patterns do you notice in this astrophysics data, and how does it relate to our ongoing research?`;
+      chatInput.value = prompt;
       chatInput.focus();
+      if (label) showToast(label, 'info');
+      sendMessage();
+    }
+
+    // Analyze buttons on Data and Sim tabs should execute immediately, not just prefill the journal.
+    window.analyzeDataset = function (dsName) {
+      const datasetPrompts = {
+        ligo: `I am reviewing the embedded LIGO dataset inside Manatuabon. Analyze it as an observational evidence table, not as fiction. Focus on event distributions, outliers, detector-era structure, and which patterns deserve governed follow-up or cross-correlation with other archives.`,
+        pulsars: `I am reviewing the embedded pulsar dataset inside Manatuabon. Analyze timing and population structure, point out unusual objects or glitch-relevant outliers, and suggest which rows would be most valuable for hypothesis testing next.`,
+        sdss: `I am reviewing the embedded SDSS dataset inside Manatuabon. Analyze redshift, morphology, and population patterns, identify unusual outliers, and suggest what follow-up data would be needed before making any strong claim.`,
+        gaia: `I am reviewing the embedded Gaia dataset inside Manatuabon. Analyze kinematic structure, proper-motion outliers, and any suspicious stellar populations that look worth cross-matching or anomaly review.`,
+        'high-energy transients': `I am reviewing the embedded high-energy transient monitor data inside Manatuabon. Analyze the flux history, point out unusual excursions, and distinguish likely monitoring artifacts from genuinely interesting transient behavior.`,
+      };
+      const prompt = datasetPrompts[dsName] || `Analyze the ${String(dsName).toUpperCase()} dataset embedded in Manatuabon. Focus on real patterns, anomalies, and what evidence should be gathered next.`;
+      runJournalAnalysis(prompt, `Running dataset analysis: ${String(dsName).toUpperCase()}`);
     };
 
     window.analyzeSim = function () {
-      document.querySelector('[data-tab="journal"]').click();
       let m = document.getElementById('c-mass').value;
       let s = document.getElementById('c-spin').value;
-      chatInput.value = `I just ran a WebGPU ray-marching simulation of Sagittarius A* with Mass = ${m} M☉ and Spin (a) = ${s}. Can you describe the theoretical physics of the photon ring and accretion disk under these parameters?`;
-      chatInput.focus();
+      let i = document.getElementById('c-incl').value;
+      let d = document.getElementById('c-dist').value;
+      const prompt = `I just ran a local Sgr A* simulation inside Manatuabon with Mass = ${m} M☉, Spin = ${s}, Inclination = ${i}°, and Camera Distance = ${d} M. Analyze the frame as a physics interpretation task: describe what photon-ring, lensing, and disk-geometry features should be expected, what would count as a rendering artifact, and what parameter changes would most strongly alter the frame next.`;
+      runJournalAnalysis(prompt, 'Running simulation frame analysis');
     };
 
     // --- HYPOTHESES CORE ---
@@ -4533,10 +4548,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
       const prompt = `Analyze this hypothesis:\n\n**${h.title}**\n${h.desc}\n\nEvidence: ${h.evidence || 'None provided'}\nStatus: ${h.status}\n\nPlease assess:\n1. Scientific validity and known supporting/contradicting evidence\n2. Testable predictions that could strengthen or falsify this\n3. Connections to current astrophysical research\n4. What observational data would be most valuable next`;
 
       // Switch to journal tab and inject
-      document.querySelector('[data-tab="journal"]').click();
-      chatInput.value = prompt;
-      showToast(`Analyzing: ${h.title}`, 'info');
-      sendMessage();
+      runJournalAnalysis(prompt, `Analyzing: ${h.title}`);
     }
 
     window.analyzeAllHypotheses = function () {
@@ -4546,10 +4558,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
 
       const prompt = `I have ${state.hypotheses.length} active hypotheses about Sgr A* and cosmology. Analyze them as a unified research framework:\n\n${summary}\n\nPlease provide:\n1. A synthesis — how do these hypotheses connect to each other?\n2. Internal contradictions or tensions between any of them\n3. A suggested priority order for investigation\n4. What single observation or dataset would test the most hypotheses simultaneously?\n5. Are there any missing hypotheses that would complete the framework?`;
 
-      document.querySelector('[data-tab="journal"]').click();
-      chatInput.value = prompt;
-      showToast('Analyzing all hypotheses as unified framework...', 'info');
-      sendMessage();
+      runJournalAnalysis(prompt, 'Analyzing all hypotheses as unified framework...');
     }
 
     // --- SKY ENGINE AUTO-REFRESH ---
@@ -5253,9 +5262,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
       fetchAutoHypothesisById(hypId).then(h => {
         if (!h) return;
         const prompt = `Analyze this auto-generated hypothesis:\n\n**${h.title}**\n${h.body || h.content || ''}\n\nConfidence: ${Math.round((h.confidence || 0) * 100)}% (${(h.confidence_label || 'medium').toUpperCase()})\nRationale: ${h.confidence_reason || 'No confidence rationale recorded.'}\n\nPlease assess:\n1. Scientific validity\n2. Testable predictions\n3. Should Danny accept or reject this hypothesis?`;
-        document.querySelector('[data-tab="journal"]').click();
-        chatInput.value = prompt;
-        sendMessage();
+        runJournalAnalysis(prompt, `Analyzing auto hypothesis: ${h.id}`);
       });
     }
 

@@ -1,0 +1,76 @@
+{
+  "schema": "real_archive_presets_v1",
+  "updated_at": "2026-04-05T23:20:00Z",
+  "notes": [
+    "These sources are real observational or archival products and should stay separate from synthetic benchmark pipelines.",
+    "Use evidence-only ingestion by default until instrument-level and survey-level review logic is in place.",
+    "Roman and Rubin should only be treated as real observational archives once their official public survey products are available."
+  ],
+  "archives": [
+    {
+      "name": "mast_jwst_hst",
+      "kind": "observational_archive",
+      "description": "Real JWST and HST observation metadata through STScI MAST.",
+      "url": "https://mast.stsci.edu",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe mast_snapshot_importer.py --target <target_name> --collections JWST,HST --radius-deg 0.05 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
+    },
+    {
+      "name": "gaia_dr3",
+      "kind": "observational_archive",
+      "description": "Real astrometry and stellar kinematics from Gaia DR3.",
+      "url": "https://gea.esac.esa.int/archive/",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe gaia_snapshot_importer.py --ra-center <ra_deg> --dec-center <dec_deg> --radius-deg 0.5 --max-results 100 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
+    },
+    {
+      "name": "sdss_dr18",
+      "kind": "observational_archive",
+      "description": "Real optical imaging and spectroscopy through SDSS SkyServer.",
+      "url": "https://skyserver.sdss.org",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe sdss_snapshot_importer.py --ra-center <ra_deg> --dec-center <dec_deg> --radius-arcmin 60 --max-results 50 --object-type galaxy --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
+    },
+    {
+      "name": "gaia_sdss_crossmatch",
+      "kind": "observational_cross_match",
+      "description": "Deterministic Gaia DR3 × SDSS DR18 cross-match anomaly triage from governed structured bundles.",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe gaia_sdss_anomaly_worker.py --gaia-bundle D:/Manatuabon/data/gaia_snapshot_bundle_<label>.json --sdss-bundle D:/Manatuabon/data/sdss_snapshot_bundle_<label>.json --max-sep-arcsec 30 --pm-threshold-masyr 10 --redshift-threshold 0.05 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest"
+    },
+    {
+      "name": "gaia_panstarrs_crossmatch",
+      "kind": "observational_cross_match",
+      "description": "Deterministic Gaia DR3 × Pan-STARRS DR2 cross-match anomaly triage from governed structured bundles.",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe gaia_panstarrs_anomaly_worker.py --gaia-bundle D:/Manatuabon/data/gaia_snapshot_bundle_<label>.json --panstarrs-bundle D:/Manatuabon/data/panstarrs_snapshot_bundle_<label>.json --max-sep-arcsec 5 --pm-threshold-masyr 10 --min-detections 3 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest"
+    },
+    {
+      "name": "panstarrs_mast",
+      "kind": "observational_archive",
+      "description": "Pan-STARRS wide-field catalog access through MAST catalog services.",
+      "url": "https://catalogs.mast.stsci.edu/panstarrs/",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe panstarrs_snapshot_importer.py --ra-center <ra_deg> --dec-center <dec_deg> --radius-deg 0.05 --max-results 50 --min-detections 1 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
+    },
+    {
+      "name": "ztf_irsa",
+      "kind": "observational_archive",
+      "description": "Real time-domain survey data through IRSA and ZTF services.",
+      "url": "https://irsa.ipac.caltech.edu/Missions/ztf.html",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe ztf_snapshot_importer.py --ra-center <ra_deg> --dec-center <dec_deg> --size-deg 0.1 --max-results 50 --intersect OVERLAPS --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest --evidence-only"
+    },
+    {
+      "name": "gaia_ztf_crossmatch",
+      "kind": "observational_cross_match",
+      "description": "Deterministic Gaia DR3 × ZTF cross-match follow-up triage from governed structured bundles.",
+      "command_template": "d:/Manatuabon/.venv/Scripts/python.exe gaia_ztf_anomaly_worker.py --gaia-bundle D:/Manatuabon/data/gaia_snapshot_bundle_<label>.json --ztf-bundle D:/Manatuabon/data/ztf_snapshot_bundle_<label>.json --max-sep-arcsec 30 --pm-threshold-masyr 10 --seeing-threshold 2.5 --inbox D:/Manatuabon/data --db D:/Manatuabon/manatuabon.db --agent-log D:/Manatuabon/agent_log.json --ingest"
+    },
+    {
+      "name": "roman_official_archive",
+      "kind": "future_observational_archive",
+      "description": "Use official Roman mission archive only when public survey products are released.",
+      "status": "future"
+    },
+    {
+      "name": "rubin_official_archive",
+      "kind": "future_observational_archive",
+      "description": "Use official Rubin data-release portals for real survey products.",
+      "status": "future"
+    }
+  ]
+}
