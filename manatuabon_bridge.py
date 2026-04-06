@@ -178,16 +178,44 @@ def extract_cloud_text(data: dict) -> str:
     return "\n".join(chunks).strip()
 
 
-def cors_headers():
+# Trusted origins for CORS (localhost variants used by the HTML frontends)
+_ALLOWED_ORIGINS = {
+    "http://127.0.0.1:8765", "http://localhost:8765",
+    "http://127.0.0.1:8766", "http://localhost:8766",
+    "http://127.0.0.1:7777", "http://localhost:7777",
+    "null",  # file:// origin sent by browsers opening local .html files
+}
+
+
+def cors_headers(origin: str = ""):
+    allowed = origin if origin in _ALLOWED_ORIGINS else ""
     return {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": allowed,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
     }
 
 
+@web.middleware
+async def cors_middleware(request, handler):
+    """Inject CORS headers into every response based on the request Origin."""
+    origin = request.headers.get("Origin", "")
+    resp = await handler(request)
+    for key, value in cors_headers(origin).items():
+        resp.headers[key] = value
+    return resp
+
+
+def safe_limit(value, default: int = 50, max_limit: int = 1000) -> int:
+    """Clamp a user-supplied limit to [1, max_limit]."""
+    try:
+        return max(1, min(int(value), max_limit))
+    except (ValueError, TypeError):
+        return default
+
+
 def json_response(data, status=200):
-    return web.json_response(data, status=status, headers=cors_headers())
+    return web.json_response(data, status=status)
 
 
 def get_council():
@@ -226,7 +254,8 @@ def build_governance_diagnostics():
 
 async def handle_options(request):
     """Handle CORS preflight requests."""
-    return web.Response(status=204, headers=cors_headers())
+    origin = request.headers.get("Origin", "")
+    return web.Response(status=204, headers=cors_headers(origin))
 
 
 async def handle_status(request):
@@ -263,11 +292,12 @@ async def handle_get_memory_link_proposals(request):
             status=request.query.get("status", "pending"),
             domain=request.query.get("domain") or None,
             relation=request.query.get("relation") or None,
-            limit=int(request.query.get("limit", "50")),
+            limit=safe_limit(request.query.get("limit", "50")),
         )
         return json_response(proposals)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("memory-link-proposals error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_get_evidence_requests(request):
     """GET /api/evidence-requests → structured follow-up tasks for held hypotheses."""
@@ -276,18 +306,19 @@ async def handle_get_evidence_requests(request):
         if council and hasattr(council, "evaluate_evidence_request_closure"):
             closure_result = council.evaluate_evidence_request_closure(
                 hypothesis_id=request.query.get("hypothesis_id") or None,
-                limit=int(request.query.get("limit", "120")),
+                limit=safe_limit(request.query.get("limit", "120"), default=120),
             )
             requests_payload = closure_result.get("evaluated", [])
         else:
             requests_payload = _memory.get_evidence_requests(
                 status=request.query.get("status", "pending"),
                 hypothesis_id=request.query.get("hypothesis_id") or None,
-                limit=int(request.query.get("limit", "120")),
+                limit=safe_limit(request.query.get("limit", "120"), default=120),
             )
         return json_response(requests_payload)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("evidence-requests error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 
 async def handle_review_evidence_request(request):
@@ -304,27 +335,23 @@ async def handle_review_evidence_request(request):
             return json_response({"error": "Evidence request not found"}, status=404)
         return json_response(reviewed)
     except ValueError as e:
-        return json_response({"error": str(e)}, status=400)
+        return json_response({"error": "Invalid request parameters"}, status=400)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
-
-
-async def handle_generate_memory_link_proposals(request):
+        log.error("review-evidence-request error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
     """POST /api/memory-link-proposals/generate → create bounded review proposals."""
     try:
         body = await request.json() if request.can_read_body else {}
         result = _memory.generate_memory_link_proposals(
-            limit=int(body.get("limit", 20)),
+            limit=safe_limit(body.get("limit", 20), default=20, max_limit=200),
             min_score=float(body.get("min_score", 2.5)),
             memory_domain=body.get("domain") or None,
             relation=body.get("relation") or None,
         )
         return json_response(result)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
-
-
-async def handle_review_memory_link_proposal(request):
+        log.error("generate-memory-link-proposals error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
     """POST /api/memory-link-proposals/review → approve or reject a proposal."""
     try:
         body = await request.json()
@@ -341,12 +368,10 @@ async def handle_review_memory_link_proposal(request):
             return json_response({"error": "Proposal not found"}, status=404)
         return json_response(result)
     except ValueError as e:
-        return json_response({"error": str(e)}, status=400)
+        return json_response({"error": "Invalid request parameters"}, status=400)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
-
-
-async def handle_query(request):
+        log.error("review-memory-link-proposal error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
     """GET/POST /query → Nemotron answers with memory context."""
     messages = []
     query = ""
@@ -461,10 +486,8 @@ async def handle_all_hypotheses(request):
             hypotheses = [hypothesis for hypothesis in hypotheses if not hypothesis["has_council_decision"]]
         return json_response(hypotheses)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
-
-
-async def handle_agent_log(request):
+        log.error("all-hypotheses error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
     """GET /agent_log → last 50 activities."""
     entries = _agent_log.recent(50)
     return json_response(entries)
@@ -479,7 +502,7 @@ async def handle_consolidate(request):
         return json_response({"status": "no_insight_generated"}, status=204)
     except Exception as e:
         log.error("Manual consolidate error: %s", e)
-        return json_response({"error": str(e)}, status=500)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_reject_hypothesis(request):
     """POST /hypotheses/reject → mark an auto-generated hypothesis as rejected."""
@@ -501,7 +524,8 @@ async def handle_reject_hypothesis(request):
         _agent_log.add("hypothesis_rejected", f"Rejected: {updated['title']}")
         return json_response({"status": "ok", "hypothesis": updated})
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("reject-hypothesis error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_update_hypothesis_status(request):
     """POST /hypotheses/status → update an auto-generated hypothesis status by id."""
@@ -519,7 +543,8 @@ async def handle_update_hypothesis_status(request):
         _agent_log.add("hypothesis_status_updated", f"{updated['title']} → {new_status}")
         return json_response({"status": "ok", "hypothesis": updated})
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("update-hypothesis-status error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_simulations(request):
     """GET /simulations → get all queued simulations."""
@@ -534,7 +559,8 @@ async def handle_dequeue_simulation(request):
             return json_response(task)
         return json_response({"status": "empty"}, status=204)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("dequeue-simulation error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 
 async def handle_cloud_proxy(request):
@@ -571,14 +597,13 @@ async def handle_cloud_proxy(request):
                     text=resp_body,
                     status=resp.status,
                     content_type="application/json",
-                    headers=cors_headers(),
                 )
     except aiohttp_client.ClientError as e:
         log.error("Cloud proxy network error: %s", e)
-        return json_response({"error": f"Cloud proxy failed: {e}"}, status=502)
+        return json_response({"error": "Cloud proxy network error"}, status=502)
     except Exception as e:
         log.error("Cloud proxy error: %s", e)
-        return json_response({"error": str(e)}, status=500)
+        return json_response({"error": "Internal server error"}, status=500)
 
 
 async def handle_cloud_query(request):
@@ -633,15 +658,14 @@ async def handle_cloud_query(request):
                         text=resp_text,
                         status=resp.status,
                         content_type="application/json",
-                        headers=cors_headers(),
                     )
                 data = json.loads(resp_text)
     except aiohttp_client.ClientError as e:
         log.error("Cloud grounded query network error: %s", e)
-        return json_response({"error": f"Cloud query failed: {e}"}, status=502)
+        return json_response({"error": "Cloud query network error"}, status=502)
     except Exception as e:
         log.error("Cloud grounded query error: %s", e)
-        return json_response({"error": str(e)}, status=500)
+        return json_response({"error": "Internal server error"}, status=500)
 
     answer = extract_cloud_text(data)
     referenced = extract_referenced_memories(answer)
@@ -664,7 +688,8 @@ async def handle_get_chat(request):
         history = _memory.get_chat_history(limit=50)
         return json_response(history)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("get-chat error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_post_chat(request):
     """POST /api/chat → push a new message to SQL history."""
@@ -673,7 +698,8 @@ async def handle_post_chat(request):
         _memory.add_chat_message(body["role"], body["content"], body.get("metadata"))
         return json_response({"status": "ok"})
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("post-chat error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 # ─── HYPOTHESIS REVIEW COUNCIL HANDLERS (Phase 18) ─────────────────
 
@@ -684,7 +710,8 @@ async def handle_council_decisions(request):
         decisions = _memory.get_all_decisions(status_filter=status_filter)
         return json_response(decisions)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("council-decisions error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_council_reviews(request):
     """GET /api/council/reviews?hyp_id=... → full review trace for a hypothesis."""
@@ -698,27 +725,30 @@ async def handle_council_reviews(request):
         hypothesis = next((hyp for hyp in _memory.get_all_hypotheses(normalized=True) if hyp["id"] == hyp_id), None)
         return json_response({"reviews": reviews, "decision": decision, "hypothesis": hypothesis, "evidence_requests": evidence_requests})
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("council-reviews error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_viz_transients(request):
     """GET /api/viz/transients?target=...&limit=20 → High-energy monitor data."""
     try:
         target = request.query.get("target", "Sgr A*")
-        limit = int(request.query.get("limit", "20"))
+        limit = safe_limit(request.query.get("limit", "20"), default=20, max_limit=500)
         transients = _memory.get_transients(target=target, limit=limit)
         return json_response(transients)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("viz/transients error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_viz_missions(request):
     """GET /api/viz/missions?name=...&limit=20 → Artemis II/Mission telemetry."""
     try:
         name = request.query.get("name")
-        limit = int(request.query.get("limit", "20"))
+        limit = safe_limit(request.query.get("limit", "20"), default=20, max_limit=500)
         missions = _memory.get_missions(mission_name=name, limit=limit)
         return json_response(missions)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("viz/missions error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 async def handle_council_override(request):
     """POST /api/council/override → Danny manually overrides a decision."""
@@ -744,9 +774,8 @@ async def handle_council_override(request):
         })
         return json_response({"status": "ok", "hypothesis": updated})
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
-
-async def handle_council_reprocess(request):
+        log.error("council-override error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
     """POST /api/council/reprocess → backfill council audits for legacy hypotheses."""
     try:
         council = get_council()
@@ -762,7 +791,7 @@ async def handle_council_reprocess(request):
             return json_response(result)
 
         result = council.reprocess_legacy(
-            limit=int(body.get("limit", 5)),
+            limit=safe_limit(body.get("limit", 5), default=5, max_limit=50),
             active_only=bool(body.get("active_only", True)),
             force=force,
             origin=body.get("origin") or None,
@@ -770,7 +799,8 @@ async def handle_council_reprocess(request):
         )
         return json_response(result)
     except Exception as e:
-        return json_response({"error": str(e)}, status=500)
+        log.error("council-reprocess error: %s", e)
+        return json_response({"error": "Internal server error"}, status=500)
 
 # ─── OBSERVATORY VIZ HANDLERS ─────────────────────────────────────────
 
@@ -784,7 +814,7 @@ async def handle_viz_skymap(request):
     """GET /api/viz/skymap → RA/Dec positions from completed MAST targets."""
     import glob
     skymap_points = []
-    inbox = Path(r"D:\Manatuabon\inbox")
+    inbox = _BASE_DIR / "inbox"
     for f in inbox.glob("STScI_Data_*.json"):
         try:
             with open(f, "r", encoding="utf-8") as fh:
@@ -861,7 +891,10 @@ async def handle_viz_network(request):
 # ─── APP FACTORY ─────────────────────────────────────────────────────
 
 def create_bridge_app():
-    app = web.Application()
+    app = web.Application(
+        middlewares=[cors_middleware],
+        client_max_size=1024 * 512,  # 512 KB max request body
+    )
 
     # CORS preflight for all routes
     app.router.add_route("OPTIONS", "/{path:.*}", handle_options)

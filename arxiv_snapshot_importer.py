@@ -6,7 +6,12 @@ import argparse
 import json
 import time
 import urllib.parse
-import xml.etree.ElementTree as ET
+try:
+    from defusedxml.ElementTree import fromstring as _safe_fromstring
+    import xml.etree.ElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
+    _safe_fromstring = None
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -70,7 +75,13 @@ def text_or_none(element: ET.Element | None, path: str, namespaces: dict | None 
 
 
 def parse_arxiv_atom(xml_text: str) -> dict:
-    root = ET.fromstring(xml_text)
+    try:
+        if _safe_fromstring is not None:
+            root = _safe_fromstring(xml_text)
+        else:
+            root = ET.fromstring(xml_text)
+    except ET.ParseError as e:
+        return {"entries": [], "parse_error": str(e)}
     feed_info = {
         "title": text_or_none(root, "atom:title", ATOM_NS),
         "id": text_or_none(root, "atom:id", ATOM_NS),

@@ -337,6 +337,10 @@
 const API_BASE = 'http://127.0.0.1:7777';
 
 // ── Utility ──
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 async function fetchJSON(path) {
     try {
         const res = await fetch(`${API_BASE}${path}`);
@@ -515,12 +519,12 @@ async function loadHypotheses() {
         const li = document.createElement('li');
         li.className = 'hyp-item';
         li.innerHTML = `
-            <div class="hyp-icon ${iconClass}">${icon}</div>
+            <div class="hyp-icon ${esc(iconClass)}">${icon}</div>
             <div style="flex:1;">
-                <div class="hyp-title">${h.title || h.id}</div>
-                <div class="hyp-meta">${h.id || ''} · ${h.type || 'unknown'}</div>
+                <div class="hyp-title">${esc(h.title || h.id)}</div>
+                <div class="hyp-meta">${esc(h.id || '')} · ${esc(h.type || 'unknown')}</div>
             </div>
-            <span class="hyp-status ${status}">${status}</span>
+            <span class="hyp-status ${esc(status)}">${esc(status)}</span>
         `;
         list.appendChild(li);
     });

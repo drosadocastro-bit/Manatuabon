@@ -24,7 +24,7 @@ import math
 from datetime import datetime
 from pathlib import Path
 
-BASE_DIR = Path(r"D:\Manatuabon")
+BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "manatuabon.db"
 INBOX_DIR = BASE_DIR / "inbox"
 INBOX_DIR.mkdir(parents=True, exist_ok=True)

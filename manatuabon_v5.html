@@ -2663,17 +2663,17 @@
         <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:rgba(255,255,255,0.03);">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div>
-              <div style="font-size:0.72rem;color:var(--text-muted);">${d.hypothesis_id}</div>
-              <div style="font-weight:700;">${(d.decision || 'unknown').toUpperCase()}</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">${escapeHtml(d.hypothesis_id)}</div>
+              <div style="font-weight:700;">${escapeHtml((d.decision || 'unknown').toUpperCase())}</div>
             </div>
             <div style="text-align:right;">
               <div style="color:${confidenceTone(Number(d.final_score || 0))};font-weight:700;">${Math.round(Number(d.final_score || 0) * 100)}%</div>
-              <div style="font-size:0.68rem;color:var(--text-muted);">${(d.timestamp || '').split('T')[0]}</div>
+              <div style="font-size:0.68rem;color:var(--text-muted);">${escapeHtml((d.timestamp || '').split('T')[0])}</div>
             </div>
           </div>
-          <div style="margin-top:8px;font-size:0.76rem;color:var(--text-secondary);line-height:1.5;">${(d.reasoning || 'No council reasoning recorded.').slice(0, 220)}</div>
+          <div style="margin-top:8px;font-size:0.76rem;color:var(--text-secondary);line-height:1.5;">${escapeHtml((d.reasoning || 'No council reasoning recorded.').slice(0, 220))}</div>
           <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-            <button class="btn-secondary" style="padding:4px 8px;font-size:0.68rem;" onclick="viewCouncilReview('${d.hypothesis_id}')">Open Review</button>
+            <button class="btn-secondary" style="padding:4px 8px;font-size:0.68rem;" onclick="viewCouncilReview('${escapeHtml(d.hypothesis_id)}')">Open Review</button>
           </div>
         </div>
       `).join('');
@@ -2686,7 +2686,7 @@
         state.councilDecisions = await res.json();
         renderCouncilDecisionHistory();
       } catch (e) {
-        document.getElementById('council-history-entries').innerHTML = `<div style="padding:12px;border:1px dashed var(--border);border-radius:10px;color:var(--danger);">${e.message}</div>`;
+        document.getElementById('council-history-entries').innerHTML = `<div style="padding:12px;border:1px dashed var(--border);border-radius:10px;color:var(--danger);">${escapeHtml(e.message)}</div>`;
       }
     }
 
@@ -2777,8 +2777,8 @@
           <div style="border:1px solid ${hasRecentOverride ? 'rgba(245,158,11,0.35)' : 'var(--border)'};border-radius:12px;padding:12px;background:${hasRecentOverride ? 'rgba(245,158,11,0.05)' : 'rgba(255,255,255,0.03)'};display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
               <div>
-                <div style="font-size:0.7rem;color:var(--text-muted);">${h.id}</div>
-                <div style="font-weight:700;line-height:1.35;">${h.title}</div>
+                <div style="font-size:0.7rem;color:var(--text-muted);">${escapeHtml(h.id)}</div>
+                <div style="font-weight:700;line-height:1.35;">${escapeHtml(h.title)}</div>
               </div>
               <div style="text-align:right;">
                 <div style="color:${confidenceTone(Number(h.confidence || 0))};font-weight:700;">${Math.round(Number(h.confidence || 0) * 100)}%</div>
@@ -2786,14 +2786,14 @@
               </div>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:0.66rem;">
-              <span class="memory-badge" style="cursor:default;">${(h.origin || 'founding').replace('_', ' ')}</span>
-              <span class="memory-badge" style="cursor:default;">${(h.status || 'proposed').replace('_', ' ')}</span>
+              <span class="memory-badge" style="cursor:default;">${escapeHtml((h.origin || 'founding').replace('_', ' '))}</span>
+              <span class="memory-badge" style="cursor:default;">${escapeHtml((h.status || 'proposed').replace('_', ' '))}</span>
               <span class="memory-badge" style="cursor:default;color:${hasAudit ? 'var(--success)' : 'var(--warning)'};border-color:${hasAudit ? 'rgba(16,185,129,0.35)' : 'rgba(245,158,11,0.35)'};">${hasAudit ? 'audit present' : 'audit missing'}</span>
               ${hasRecentOverride ? `<span class="memory-badge" style="cursor:default;color:var(--warning);border-color:rgba(245,158,11,0.35);">${overrideBadgeLabel}</span>` : ''}
             </div>
-            <div style="font-size:0.74rem;color:var(--text-secondary);line-height:1.5;">${(h.text || '').slice(0, 220) || 'No canonical description recorded.'}</div>
+            <div style="font-size:0.74rem;color:var(--text-secondary);line-height:1.5;">${escapeHtml((h.text || '').slice(0, 220) || 'No canonical description recorded.')}</div>
             <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:0.68rem;color:var(--text-muted);">
-              <div>Root: ${h.root_id || '—'}</div>
+              <div>Root: ${escapeHtml(h.root_id || '—')}</div>
               <div>Updated: ${(h.updated_at || h.timestamp || '').split('T')[0] || '—'}</div>
               <div><button class="btn-secondary" style="padding:3px 7px;font-size:0.66rem;min-width:100%;" onclick="viewHypothesisEvidenceLinks('${h.id}', 'support')">Supports: ${supportCount}</button></div>
               <div><button class="btn-secondary" style="padding:3px 7px;font-size:0.66rem;min-width:100%;" onclick="viewHypothesisEvidenceLinks('${h.id}', 'challenge')">Challenges: ${contradictionCount}</button></div>
@@ -2934,7 +2934,7 @@
       } catch (e) {
         document.getElementById('canonical-hypothesis-summary').innerHTML = '';
         document.getElementById('canonical-audit-progress').innerHTML = '';
-        document.getElementById('canonical-hypothesis-list').innerHTML = `<div style="grid-column:1/-1;padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--danger);">${e.message}</div>`;
+        document.getElementById('canonical-hypothesis-list').innerHTML = `<div style="grid-column:1/-1;padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--danger);">${escapeHtml(e.message)}</div>`;
       }
     }
 
@@ -2999,14 +2999,14 @@
               </div>
               <button class="btn-secondary" style="padding:4px 8px;font-size:0.68rem;" onclick="viewMemoryCitation(${Number(memory.id)})">Open Memory</button>
             </div>
-            <div style="margin-top:8px;font-size:0.78rem;color:var(--text-secondary);line-height:1.55;">${memory.summary || 'No summary available.'}</div>
+            <div style="margin-top:8px;font-size:0.78rem;color:var(--text-secondary);line-height:1.55;">${escapeHtml(memory.summary || 'No summary available.')}</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
-              ${(memory.entities || []).map(tag => `<span class="memory-badge" style="cursor:default;">${tag}</span>`).join('')}
+              ${(memory.entities || []).map(tag => `<span class="memory-badge" style="cursor:default;">${escapeHtml(tag)}</span>`).join('')}
             </div>
           </div>
         `).join('');
       } catch (e) {
-        content.innerHTML = `<div style="padding:16px;border:1px dashed var(--border);border-radius:10px;color:var(--danger);">${e.message}</div>`;
+        content.innerHTML = `<div style="padding:16px;border:1px dashed var(--border);border-radius:10px;color:var(--danger);">${escapeHtml(e.message)}</div>`;
       }
     }
 
@@ -3901,11 +3901,11 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
         let html = '<tr><th>Source</th><th>Energy</th><th>Flux</th><th>Err</th><th>Timestamp</th></tr>';
         data.forEach(r => {
           html += `<tr>
-            <td style="color:${r.source.includes('Swift') ? '#f59e0b' : '#ef4444'}">${r.source}</td>
-            <td>${r.energy_band}</td>
+            <td style="color:${r.source.includes('Swift') ? '#f59e0b' : '#ef4444'}">${escapeHtml(r.source)}</td>
+            <td>${escapeHtml(r.energy_band)}</td>
             <td style="font-family:var(--mono)">${r.flux.toFixed(4)}</td>
             <td style="font-family:var(--mono); opacity:0.6">${r.error.toFixed(4)}</td>
-            <td style="font-size:0.65rem">${r.timestamp.replace('T', ' ')}</td>
+            <td style="font-size:0.65rem">${escapeHtml(r.timestamp.replace('T', ' '))}</td>
           </tr>`;
         });
         document.getElementById('transient-table').innerHTML = html;
@@ -4230,8 +4230,9 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
         html += `<div class="source-tag ${sClass}">${sourceLabel}</div>`;
       }
 
-      // Convert Markdown to HTML (simplified)
-      const formatted = content
+      // Convert Markdown to HTML (simplified) — escape first to prevent XSS
+      const safeContent = escapeHtml(content);
+      const formatted = safeContent
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/`(.*?)`/g, '<code style="background:rgba(0,0,0,0.3);padding:2px 4px;border-radius:4px;font-family:var(--mono);font-size:0.8em;">$1</code>')
@@ -4240,13 +4241,13 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
       html += `<div>${formatted}</div>`;
 
       if (routeReason && role === 'assistant') {
-        html += `<div class="route-reason">ℹ️ ${routeReason}</div>`;
+        html += `<div class="route-reason">ℹ️ ${escapeHtml(routeReason)}</div>`;
       }
 
       if (confidenceInfo && role === 'assistant' && typeof confidenceInfo.score === 'number') {
         const pct = Math.round((confidenceInfo.score || 0) * 100);
-        const label = (confidenceInfo.label || 'medium').toUpperCase();
-        const reason = confidenceInfo.reason || 'No confidence reason provided.';
+        const label = escapeHtml((confidenceInfo.label || 'medium').toUpperCase());
+        const reason = escapeHtml(confidenceInfo.reason || 'No confidence reason provided.');
         html += `<div class="route-reason">Confidence: <strong>${label}</strong> ${pct}% · ${reason}</div>`;
 
         if ((confidenceInfo.score || 0) < 0.4) {
@@ -4469,11 +4470,11 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
         card.className = 'hypothesis-card';
         card.innerHTML = `
           <div class="card-header">
-            <div class="card-title">${h.title}</div>
-            <div class="status-select" style="border:none" class="status-${h.status}">${h.status}</div>
+            <div class="card-title">${escapeHtml(h.title)}</div>
+            <div class="status-select" style="border:none" class="status-${escapeHtml(h.status)}">${escapeHtml(h.status)}</div>
           </div>
-          <div class="card-desc">${h.desc}</div>
-          ${h.evidence ? `<div class="card-evidence">${h.evidence}</div>` : ''}
+          <div class="card-desc">${escapeHtml(h.desc)}</div>
+          ${h.evidence ? `<div class="card-evidence">${escapeHtml(h.evidence)}</div>` : ''}
           <div class="card-footer">
             <div class="card-date">${h.date}</div>
             <div style="display:flex;gap:6px;">
@@ -4488,8 +4489,8 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
         const mini = document.createElement('div');
         mini.className = 'hypothesis-mini';
         mini.innerHTML = `
-          <div class="title">${h.title}</div>
-          <span class="status-badge status-${h.status}">${h.status}</span>
+          <div class="title">${escapeHtml(h.title)}</div>
+          <span class="status-badge status-${escapeHtml(h.status)}">${escapeHtml(h.status)}</span>
         `;
         mini.onclick = () => document.querySelector('[data-tab="hypotheses"]').click();
         sbg.appendChild(mini);
@@ -4631,7 +4632,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
         statusEl.style.color = 'var(--warning)';
         document.getElementById('api-key-input').placeholder = 'Re-enter key to refresh stored credential';
       } else if (state.apiKeys.anthropic) {
-        statusEl.innerHTML = `🔒 Stored key: <strong>${masked}</strong>`;
+        statusEl.innerHTML = `🔒 Stored key: <strong>${escapeHtml(masked)}</strong>`;
         statusEl.style.color = 'var(--success)';
       } else {
         statusEl.innerHTML = 'No API key stored';
@@ -4891,18 +4892,18 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
           return `
           <div class="hypothesis-card" style="border-left: 3px solid ${isPending ? 'var(--warning)' : (h.status === 'accepted' ? 'var(--success)' : 'var(--danger)')};">
             <div class="card-header">
-              <div class="card-title">🤖 ${h.title}</div>
-              <div class="status-badge ${statusClass}" style="font-size:0.6rem; padding: 2px 8px; border-radius:10px;">${h.status.replace('_', ' ').toUpperCase()}</div>
+              <div class="card-title">🤖 ${escapeHtml(h.title)}</div>
+              <div class="status-badge ${statusClass}" style="font-size:0.6rem; padding: 2px 8px; border-radius:10px;">${escapeHtml(h.status.replace('_', ' ').toUpperCase())}</div>
             </div>
-            <div class="card-desc">${h.body || ''}</div>
+            <div class="card-desc">${escapeHtml(h.body || '')}</div>
             <div style="font-size:0.6rem;color:var(--text-muted);margin:6px 0; display:flex; justify-content:space-between; align-items:center;">
               <span style="color:${confidenceColor};">Confidence: ${confidencePct}% (${(h.confidence_label || 'medium').toUpperCase()})</span>
               <button class="btn-secondary" style="padding:2px 6px; font-size:0.6rem; border-color:var(--accent); color:var(--accent);" onclick="viewCouncilReview('${h.id}')">⚖️ View Council Audit</button>
             </div>
-            <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">${h.confidence_reason || 'No confidence rationale recorded.'}</div>
+            <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">${escapeHtml(h.confidence_reason || 'No confidence rationale recorded.')}</div>
             <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">
-              <div style="margin-bottom:4px;">Context domains: ${contextDomains.length ? contextDomains.map(domain => `<span class="memory-badge" style="cursor:default;font-size:0.6rem;">${domain}</span>`).join(' ') : '<span style="color:var(--text-muted);">none recorded</span>'}</div>
-              <div>Injected context: ${contextHypotheses.length ? contextHypotheses.map(ref => `<span class="memory-badge" style="cursor:default;font-size:0.6rem;">${ref.id} · ${ref.domain}</span>`).join(' ') : '<span style="color:var(--text-muted);">no founding context recorded</span>'}</div>
+              <div style="margin-bottom:4px;">Context domains: ${contextDomains.length ? contextDomains.map(domain => `<span class="memory-badge" style="cursor:default;font-size:0.6rem;">${escapeHtml(domain)}</span>`).join(' ') : '<span style="color:var(--text-muted);">none recorded</span>'}</div>
+              <div>Injected context: ${contextHypotheses.length ? contextHypotheses.map(ref => `<span class="memory-badge" style="cursor:default;font-size:0.6rem;">${escapeHtml(ref.id)} · ${escapeHtml(ref.domain)}</span>`).join(' ') : '<span style="color:var(--text-muted);">no founding context recorded</span>'}</div>
             </div>
             <div class="card-footer">
               <div class="card-date">${(h.timestamp || '').split('T')[0]}</div>
@@ -4955,7 +4956,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
             }
 
             const isMergedDecision = decision.decision === 'merged';
-            const headlineLabel = isMergedDecision ? 'Duplicate Resolution: MERGED' : `Decision: ${decision.decision.toUpperCase()}`;
+            const headlineLabel = isMergedDecision ? 'Duplicate Resolution: MERGED' : `Decision: ${escapeHtml(decision.decision.toUpperCase())}`;
             const headlineMetric = isMergedDecision
               ? `<div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;"><div class="stat-value" style="font-size:1.4rem;">${(decision.final_score * 100).toFixed(1)}%</div><div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">similarity</div></div>`
               : `<div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;"><div class="stat-value" style="font-size:1.4rem;">${(decision.final_score * 100).toFixed(1)}%</div><div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">council score</div></div>`;
@@ -4967,10 +4968,10 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
                         ${headlineMetric}
                     </div>
                 <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;">
-                  ${((hypothesis?.context_domains || []).map(domain => `<span class="memory-badge" style="cursor:default;">${domain}</span>`).join('')) || '<span>no context domains recorded</span>'}
+                  ${((hypothesis?.context_domains || []).map(domain => `<span class="memory-badge" style="cursor:default;">${escapeHtml(domain)}</span>`).join('')) || '<span>no context domains recorded</span>'}
                 </div>
                 <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:12px;display:flex;flex-wrap:wrap;gap:6px;">
-                  ${((hypothesis?.context_hypotheses || []).map(ref => `<span class="memory-badge" style="cursor:default;">${ref.id} · ${ref.domain}</span>`).join('')) || '<span>no founding context recorded</span>'}
+                  ${((hypothesis?.context_hypotheses || []).map(ref => `<span class="memory-badge" style="cursor:default;">${escapeHtml(ref.id)} · ${escapeHtml(ref.domain)}</span>`).join('')) || '<span>no founding context recorded</span>'}
                 </div>
                 ${isMergedDecision ? `
                   <div style="margin-bottom:12px;padding:10px;border:1px solid rgba(96,165,250,0.35);border-radius:10px;background:rgba(96,165,250,0.08);display:flex;flex-direction:column;gap:6px;">
@@ -5003,12 +5004,12 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
                     `).join('')}
                   </div>
                 ` : ''}
-                    <div style="font-size:0.85rem; line-height:1.6; color:var(--text-secondary); white-space:pre-wrap;">${decision.reasoning}</div>
+                    <div style="font-size:0.85rem; line-height:1.6; color:var(--text-secondary); white-space:pre-wrap;">${escapeHtml(decision.reasoning)}</div>
                     
                     <div style="margin-top:16px; display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
                         ${Object.entries(decision.score_breakdown || {}).map(([dim, val]) => `
                             <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px; text-align:center;">
-                                <div style="font-size:0.6rem; text-transform:uppercase; color:var(--text-muted);">${dim.replace('_',' ')}</div>
+                                <div style="font-size:0.6rem; text-transform:uppercase; color:var(--text-muted);">${escapeHtml(dim.replace('_',' '))}</div>
                                 <div style="font-weight:700; color:var(--accent);">${(val * 100).toFixed(0)}%</div>
                             </div>
                         `).join('')}
@@ -5075,12 +5076,12 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
                 ${isMergedDecision ? '<span class="memory-badge" style="cursor:default;border-color:rgba(96,165,250,0.35);color:#60a5fa;">diagnostic only for merged duplicate</span>' : ''}
               </div>
             ` : ''}
-                        <div class="agent-body">${rev.reasoning}</div>
+                        <div class="agent-body">${escapeHtml(rev.reasoning)}</div>
                         ${obs.length > 0 ? `
                             <div class="agent-objections">
                                 <strong>Objections/Concerns:</strong>
                                 <ul style="margin:4px 0 0 20px; padding:0;">
-                                    ${obs.map(o => `<li>${o}</li>`).join('')}
+                                    ${obs.map(o => `<li>${escapeHtml(o)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
@@ -5088,7 +5089,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Blockers:</strong>
                 <ul style="margin:4px 0 0 20px; padding:0;">
-                  ${blockers.map(item => `<li>${item}</li>`).join('')}
+                  ${blockers.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
@@ -5096,7 +5097,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Concrete Revisions:</strong>
                 <ul style="margin:4px 0 0 20px; padding:0;">
-                  ${concreteRevisions.map(item => `<li>${item}</li>`).join('')}
+                  ${concreteRevisions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
@@ -5104,7 +5105,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Evidence Requests:</strong>
                 <ul style="margin:4px 0 0 20px; padding:0;">
-                  ${evidenceRequests.map(item => `<li>${item}</li>`).join('')}
+                  ${evidenceRequests.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
@@ -5138,7 +5139,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Extracted Quantities:</strong>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-                  ${extractedQuantities.map(item => `<span class="memory-badge" style="cursor:default;">${item}</span>`).join('')}
+                  ${extractedQuantities.map(item => `<span class="memory-badge" style="cursor:default;">${escapeHtml(item)}</span>`).join('')}
                 </div>
               </div>
             ` : ''}
@@ -5146,7 +5147,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Equation Families:</strong>
                 <ul style="margin:4px 0 0 20px; padding:0;">
-                  ${equationsConsidered.map(item => `<li>${item}</li>`).join('')}
+                  ${equationsConsidered.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
@@ -5154,7 +5155,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Missing Inputs:</strong>
                 <ul style="margin:4px 0 0 20px; padding:0;">
-                  ${missingInputs.map(item => `<li>${item}</li>`).join('')}
+                  ${missingInputs.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
@@ -5162,7 +5163,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
               <div class="agent-objections" style="margin-top:10px;">
                 <strong>Recommended Measurements:</strong>
                 <ul style="margin:4px 0 0 20px; padding:0;">
-                  ${recommendedMeasurements.map(item => `<li>${item}</li>`).join('')}
+                  ${recommendedMeasurements.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
@@ -5173,7 +5174,7 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
             content.innerHTML = html;
 
         } catch (e) {
-            content.innerHTML = `<div style="padding:20px; color:var(--danger);">Error loading council review: ${e.message}</div>`;
+            content.innerHTML = `<div style="padding:20px; color:var(--danger);">Error loading council review: ${escapeHtml(e.message)}</div>`;
         }
     }
 
@@ -5245,10 +5246,10 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
           return `
             <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px; border-left:2px solid ${statusColor};">
                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                 <strong style="color:var(--text-primary);">${statusIcon} Task: ${q.id}</strong>
-                 <span style="font-size:0.65rem; color:${statusColor}; text-transform:uppercase;">${q.status}</span>
+                 <strong style="color:var(--text-primary);">${statusIcon} Task: ${escapeHtml(q.id)}</strong>
+                 <span style="font-size:0.65rem; color:${statusColor}; text-transform:uppercase;">${escapeHtml(q.status)}</span>
                </div>
-               <div style="color:var(--text-secondary); line-height:1.3;">${q.recommendation}</div>
+               <div style="color:var(--text-secondary); line-height:1.3;">${escapeHtml(q.recommendation)}</div>
                <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px;">Queued: ${timeAgo(new Date(q.timestamp))}</div>
             </div>
           `;
@@ -5273,14 +5274,14 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
         const container = document.getElementById('agent-log-entries');
         container.innerHTML = entries.slice(-20).reverse().map(e => {
           const t = e.timestamp ? e.timestamp.split('T')[1]?.substring(0, 8) : '';
-          const evidenceDomains = (e.evidence_domains || []).map(domain => `<span class="memory-badge" style="cursor:default;font-size:0.62rem;">${domain}</span>`).join('');
-          const selectedHypotheses = (e.selected_hypotheses || []).map(h => `<span class="memory-badge" style="cursor:default;font-size:0.62rem;">${h.id} · ${h.domain}</span>`).join('');
+          const evidenceDomains = (e.evidence_domains || []).map(domain => `<span class="memory-badge" style="cursor:default;font-size:0.62rem;">${escapeHtml(domain)}</span>`).join('');
+          const selectedHypotheses = (e.selected_hypotheses || []).map(h => `<span class="memory-badge" style="cursor:default;font-size:0.62rem;">${escapeHtml(h.id)} · ${escapeHtml(h.domain)}</span>`).join('');
           const contextBlock = e.selected_hypotheses ? `
             <div style="margin:6px 0 0 58px;display:flex;flex-direction:column;gap:6px;">
               <div style="display:flex;flex-wrap:wrap;gap:6px;">${evidenceDomains || '<span style="font-size:0.68rem;color:var(--text-muted);">no evidence domains detected</span>'}</div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">${selectedHypotheses || '<span style="font-size:0.68rem;color:var(--text-muted);">no founding hypotheses injected</span>'}</div>
             </div>` : '';
-          return `<div class="agent-log-entry"><span class="log-time">${t}</span> <span class="log-action">● ${e.action}</span> ${e.details || ''}${contextBlock}</div>`;
+          return `<div class="agent-log-entry"><span class="log-time">${escapeHtml(t)}</span> <span class="log-action">● ${escapeHtml(e.action)}</span> ${escapeHtml(e.details || '')}${contextBlock}</div>`;
         }).join('');
       } catch (e) { }
     }

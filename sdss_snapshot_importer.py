@@ -73,6 +73,18 @@ def _fetch_json(url: str, params: dict, *, timeout: int = 60):
 
 
 def _build_sql_query(ra_center: float, dec_center: float, radius_arcmin: float, max_results: int, object_type: str) -> str:
+    # Validate numeric bounds to prevent remote SQL injection via crafted floats
+    ra_center = float(ra_center)
+    dec_center = float(dec_center)
+    radius_arcmin = float(radius_arcmin)
+    max_results = max(1, min(int(max_results), 5000))
+    if not (-360 <= ra_center <= 360):
+        raise ValueError(f"RA out of bounds: {ra_center}")
+    if not (-90 <= dec_center <= 90):
+        raise ValueError(f"Dec out of bounds: {dec_center}")
+    if not (0 < radius_arcmin <= 600):
+        raise ValueError(f"Radius out of bounds: {radius_arcmin}")
+
     type_clause = ""
     if object_type == "galaxy":
         type_clause = "AND type = 3"
@@ -96,6 +108,11 @@ def _build_sql_query(ra_center: float, dec_center: float, radius_arcmin: float, 
 
 
 def _build_spectro_sql_query(ra_center: float, dec_center: float, radius_arcmin: float, max_results: int, object_type: str) -> str:
+    ra_center = float(ra_center)
+    dec_center = float(dec_center)
+    radius_arcmin = float(radius_arcmin)
+    max_results = max(1, min(int(max_results), 5000))
+
     type_clause = ""
     if object_type == "galaxy":
         type_clause = "AND p.type = 3"

@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────────────────
-INBOX_DIR = Path(r"D:\Manatuabon\inbox")
+INBOX_DIR = Path(__file__).resolve().parent / "inbox"
 INBOX_DIR.mkdir(parents=True, exist_ok=True)
 
 HEADERS = {"User-Agent": "Manatuabon/1.0 (astrophysics research; contact@manatuabon.local)"}

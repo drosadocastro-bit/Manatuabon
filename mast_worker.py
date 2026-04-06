@@ -15,8 +15,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("mast_worker")
 
-DB_PATH = Path(r"D:\Manatuabon\manatuabon.db")
-INBOX_DIR = Path(r"D:\Manatuabon\inbox")
+DB_PATH = Path(__file__).resolve().parent / "manatuabon.db"
+INBOX_DIR = Path(__file__).resolve().parent / "inbox"
 
 def ensure_tables():
     conn = ensure_runtime_db(DB_PATH, migrate=False)

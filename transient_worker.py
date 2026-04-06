@@ -11,10 +11,11 @@ import numpy as np
 from db_init import ensure_runtime_db
 
 # Configuration
-AGENT_DB = "D:\\Manatuabon\\manatuabon.db"
-INBOX_DIR = "D:\\Manatuabon\\inbox"
+_BASE_DIR = Path(__file__).resolve().parent
+AGENT_DB = str(_BASE_DIR / "manatuabon.db")
+INBOX_DIR = str(_BASE_DIR / "inbox")
 POLL_INTERVAL = 14400  # 4 hours
-LOG_FILE = "D:\\Manatuabon\\transient_worker.log"
+LOG_FILE = str(_BASE_DIR / "transient_worker.log")
 
 logging.basicConfig(
     level=logging.INFO,

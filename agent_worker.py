@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 BRIDGE_URL = "http://127.0.0.1:7777"
-RENDERS_DIR = Path("D:/Manatuabon/renders")
+RENDERS_DIR = Path(__file__).resolve().parent / "renders"
 
 print(r"""
 =========================================

@@ -19,7 +19,7 @@ from pathlib import Path
 from db_init import ensure_runtime_db
 
 
-BASE_DIR = Path(r"D:\Manatuabon")
+BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_INBOX_DIR = BASE_DIR / "inbox"
 DEFAULT_DB_PATH = BASE_DIR / "manatuabon.db"
 

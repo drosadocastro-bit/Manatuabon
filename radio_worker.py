@@ -169,8 +169,8 @@ def process_queue(db_path: Path, inbox_dir: Path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--db", default=str(Path(r"D:\Manatuabon\manatuabon.db")))
-    parser.add_argument("--inbox", default=str(Path(r"D:\Manatuabon\inbox")))
+    parser.add_argument("--db", default=str(Path(__file__).resolve().parent / "manatuabon.db"))
+    parser.add_argument("--inbox", default=str(Path(__file__).resolve().parent / "inbox"))
     parser.add_argument("--poll-interval", type=int, default=15)
     args = parser.parse_args()
 

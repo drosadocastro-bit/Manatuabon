@@ -23,8 +23,8 @@ HORIZONS_API = "https://ssd.jpl.nasa.gov/api/horizons.api"
 NASA_GCS_BASE = "https://storage.googleapis.com/storage/v1/b/p-2-cen1/o/"
 ORION_ID = "'-1024'"  # Artemis II Orion MPCV
 OBSERVER_GEO = "'-66.1527,18.4346,0'"  # Bayamón, PR (Lon, Lat, Alt km)
-INBOX_PATH = Path(r"D:\Manatuabon\inbox")
-DB_PATH = Path(r"D:\Manatuabon\manatuabon.db")
+INBOX_PATH = Path(__file__).resolve().parent / "inbox"
+DB_PATH = Path(__file__).resolve().parent / "manatuabon.db"
 
 # NASA Parameter Mappings
 # Parm 2003,2004,2005: ECI Position (ft)

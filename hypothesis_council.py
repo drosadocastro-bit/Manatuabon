@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 from dotenv import load_dotenv
 
-load_dotenv(Path(r"D:\Manatuabon\.env"))
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 log = logging.getLogger("manatuabon.council")
 
@@ -27,7 +27,9 @@ log = logging.getLogger("manatuabon.council")
 class EmbeddingSimilarity:
     """Cosine similarity via local all-MiniLM-L6-v2."""
 
-    def __init__(self, model_path: str = r"D:\Manatuabon\models\all-MiniLM-L6-v2"):
+    def __init__(self, model_path: str | None = None):
+        if model_path is None:
+            model_path = str(Path(__file__).resolve().parent / "models" / "all-MiniLM-L6-v2")
         from sentence_transformers import SentenceTransformer
         log.info("Loading embedding model from %s...", model_path)
         self.model = SentenceTransformer(model_path)
@@ -375,7 +377,7 @@ class JudgeAgent:
                 api_key=self.anthropic_key,
                 temperature=0.3
             )
-        except Exception as e:
+        except (ImportError, ValueError, OSError) as e:
             log.warning("Could not initialize Cloud Judge: %s", e)
             return None
 
@@ -404,7 +406,7 @@ class JudgeAgent:
                     result["agent"] = "judge"
                     result["engine"] = "cloud"
                     return result
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:
                 log.warning("[JUDGE] Cloud failed (%s), falling back to local...", e)
 
         # Fallback to local Nemotron
@@ -983,7 +985,7 @@ class HypothesisCouncil:
                 f"🧾 evidence reviewer: '{hyp['title']}' -> cap {evidence_review.get('decision_cap', 'accepted')}"
             )
             return evidence_review
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, RuntimeError) as e:
             log.warning("Evidence review failed for %s: %s", hyp["title"], e)
             return None
 
@@ -1140,7 +1142,7 @@ class HypothesisCouncil:
                 f"📐 quant reviewer: '{hyp['title']}' -> {quant_review.get('verdict', 'n/a')}"
             )
             return quant_review
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, RuntimeError) as e:
             log.warning("Quant review failed for %s: %s", hyp["title"], e)
             return None
 
@@ -1177,7 +1179,7 @@ class HypothesisCouncil:
                 f"🪞 reflection: '{hyp['title']}' -> {reflection_review.get('recommended_decision', decision)}"
             )
             return reflection_review
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, RuntimeError) as e:
             log.warning("Reflection review failed for %s: %s", hyp["title"], e)
             return None
 

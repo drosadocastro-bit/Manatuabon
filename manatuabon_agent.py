@@ -17,14 +17,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load local .env variables
-load_dotenv(Path(r"D:\Manatuabon\.env"))
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 import requests
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # ─── CONFIG ──────────────────────────────────────────────────────────
-BASE_DIR = Path(r"D:\Manatuabon")
+BASE_DIR = Path(__file__).resolve().parent
 DB_FILE = BASE_DIR / "manatuabon.db"
 AGENT_LOG_FILE = BASE_DIR / "agent_log.json"
 SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".txt", ".json", ".csv"}
@@ -512,6 +512,7 @@ class MemoryManager:
     def get_memories_by_ids(self, memory_ids: list[int]) -> list:
         if not memory_ids:
             return []
+        memory_ids = memory_ids[:200]  # Cap to prevent query explosion
         placeholders = ",".join("?" for _ in memory_ids)
         with self._get_conn() as c:
             rows = c.execute(
@@ -730,11 +731,16 @@ class MemoryManager:
             )
 
             if normalized_decision == "approve":
-                relation_column = "supports_hypothesis" if proposal["relation"] == "support" else "challenges_hypothesis"
-                c.execute(
-                    f"UPDATE memories SET {relation_column}=? WHERE id=?",
-                    (proposal["hypothesis_id"], proposal["memory_id"]),
-                )
+                if proposal["relation"] == "support":
+                    c.execute(
+                        "UPDATE memories SET supports_hypothesis=? WHERE id=?",
+                        (proposal["hypothesis_id"], proposal["memory_id"]),
+                    )
+                else:
+                    c.execute(
+                        "UPDATE memories SET challenges_hypothesis=? WHERE id=?",
+                        (proposal["hypothesis_id"], proposal["memory_id"]),
+                    )
                 c.execute(
                     "UPDATE memory_link_proposals SET status='superseded', reviewed_at=?, reviewer_note=? WHERE memory_id=? AND relation=? AND status='pending' AND id != ?",
                     (reviewed_at, "Superseded by approved proposal", proposal["memory_id"], proposal["relation"], int(proposal_id)),
