@@ -55,7 +55,7 @@ The design intent is simple: external evidence is frozen first, normalized secon
 
 ## Quick Start
 
-Detailed setup notes live in [SETUP.md](SETUP.md).
+Detailed setup notes live in [SETUP.md](SETUP.md). A full step-by-step usage guide lives in [WALKTHROUGH.md](WALKTHROUGH.md).
 
 Typical local bootstrap on Windows PowerShell:
 
