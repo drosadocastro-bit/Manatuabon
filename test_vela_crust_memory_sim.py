@@ -15,8 +15,12 @@ from vela_crust_memory_sim import (
     GlitchEvent,
     SimulationResult,
     VelaCrustMemorySimulator,
+    _ascii_chart,
+    _bar_chart,
     analyze_memory,
     build_simulation_bundle,
+    print_json,
+    print_plot,
     write_bundle,
 )
 
@@ -369,3 +373,157 @@ def test_physics_interglitch_interval_vela_range():
         mean_interval = analysis["mean_interval_days"]
         # Should be within a factor of 2 of the Vela range
         assert 400.0 <= mean_interval <= 2000.0
+
+
+# ---------------------------------------------------------------------------
+# Output format helpers
+# ---------------------------------------------------------------------------
+
+def test_ascii_chart_returns_string():
+    xs = [float(i) for i in range(100)]
+    ys = [math.sin(x / 10.0) for x in xs]
+    out = _ascii_chart(xs, ys, title="Test", xlabel="x", ylabel="y")
+    assert isinstance(out, str)
+    assert len(out) > 0
+
+
+def test_ascii_chart_empty_data():
+    out = _ascii_chart([], [], title="Empty")
+    assert "no data" in out
+
+
+def test_ascii_chart_flat_line():
+    # Should not raise on zero y-span
+    xs = [0.0, 1.0, 2.0]
+    ys = [5.0, 5.0, 5.0]
+    out = _ascii_chart(xs, ys)
+    assert isinstance(out, str)
+
+
+def test_ascii_chart_single_point():
+    out = _ascii_chart([1.0], [2.0])
+    assert isinstance(out, str)
+
+
+def test_ascii_chart_vlines_marked():
+    xs = [float(i) for i in range(50)]
+    ys = [float(i) for i in range(50)]
+    out = _ascii_chart(xs, ys, vlines=[25.0])
+    assert "│" in out
+
+
+def test_bar_chart_returns_string():
+    out = _bar_chart(["G0", "G1", "G2"], [0.05, 0.03, 0.07], title="Permanent fractions")
+    assert isinstance(out, str)
+    assert "G0" in out and "G2" in out
+
+
+def test_bar_chart_empty():
+    out = _bar_chart([], [], title="Empty")
+    assert "no data" in out
+
+
+def _make_result_and_analysis(seed: int = 42, duration: float = 5000.0):
+    sim = VelaCrustMemorySimulator(seed=seed)
+    result = sim.simulate(duration)
+    analysis = analyze_memory(result)
+    return result, analysis
+
+
+def test_print_plot_to_file(tmp_path):
+    result, analysis = _make_result_and_analysis()
+    out_file = tmp_path / "plot.txt"
+    print_plot(result, analysis, output_file=out_file)
+    assert out_file.exists()
+    text = out_file.read_text(encoding="utf-8")
+    assert "Panel 1" in text
+    assert "Panel 2" in text
+    assert "Panel 3" in text
+    assert "H19" in text
+
+
+def test_print_plot_stdout(capsys):
+    result, analysis = _make_result_and_analysis()
+    print_plot(result, analysis)
+    captured = capsys.readouterr()
+    assert "Panel 1" in captured.out
+    assert "VELA PULSAR" in captured.out
+
+
+def test_print_json_to_file(tmp_path):
+    result, analysis = _make_result_and_analysis()
+    bundle = build_simulation_bundle(result, analysis)
+    out_file = tmp_path / "bundle.json"
+    print_json(bundle, output_file=out_file)
+    assert out_file.exists()
+    loaded = json.loads(out_file.read_text(encoding="utf-8"))
+    assert loaded["manatuabon_schema"] == "structured_ingest_v1"
+    assert loaded["payload_type"] == "vela_crust_memory_simulation_bundle"
+
+
+def test_print_json_stdout(capsys):
+    result, analysis = _make_result_and_analysis()
+    bundle = build_simulation_bundle(result, analysis)
+    print_json(bundle)
+    captured = capsys.readouterr()
+    loaded = json.loads(captured.out)
+    assert loaded["payload_type"] == "vela_crust_memory_simulation_bundle"
+
+
+def test_print_plot_no_glitches(capsys):
+    # Very short run may produce no glitches; plot should still render gracefully
+    result, analysis = _make_result_and_analysis(duration=10.0)
+    print_plot(result, analysis)
+    captured = capsys.readouterr()
+    assert "Panel 1" in captured.out
+
+
+def test_output_format_json_cli(tmp_path):
+    """End-to-end: --format json --output-file writes valid bundle JSON."""
+    import subprocess, sys
+    out_file = tmp_path / "out.json"
+    cmd = [
+        sys.executable, "vela_crust_memory_sim.py",
+        "--duration-days", "3000",
+        "--no-bundle",
+        "--format", "json",
+        "--output-file", str(out_file),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    assert out_file.exists()
+    loaded = json.loads(out_file.read_text())
+    assert loaded["manatuabon_schema"] == "structured_ingest_v1"
+
+
+def test_output_format_plot_cli(tmp_path):
+    """End-to-end: --format plot --output-file writes ASCII chart file."""
+    import subprocess, sys
+    out_file = tmp_path / "out.txt"
+    cmd = [
+        sys.executable, "vela_crust_memory_sim.py",
+        "--duration-days", "3000",
+        "--no-bundle",
+        "--format", "plot",
+        "--output-file", str(out_file),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    assert out_file.exists()
+    text = out_file.read_text(encoding="utf-8")
+    assert "Panel 1" in text and "Panel 2" in text
+
+
+def test_output_format_text_cli():
+    """End-to-end: default --format text prints glitch summary to stdout."""
+    import subprocess, sys
+    cmd = [
+        sys.executable, "vela_crust_memory_sim.py",
+        "--duration-days", "3000",
+        "--no-bundle",
+        "--format", "text",
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    assert "Glitches detected" in proc.stdout
+    assert "H19" in proc.stdout

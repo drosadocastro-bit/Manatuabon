@@ -34,6 +34,7 @@ Vela parameters (ATNF DR4, PSR B0833-45)
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import math
 import random
@@ -561,6 +562,191 @@ def write_bundle(
 
 
 # ---------------------------------------------------------------------------
+# ASCII terminal plot
+# ---------------------------------------------------------------------------
+
+def _ascii_chart(
+    xs: list[float],
+    ys: list[float],
+    *,
+    title: str = "",
+    xlabel: str = "",
+    ylabel: str = "",
+    width: int = 72,
+    height: int = 14,
+    vlines: list[float] | None = None,
+    y_unit: str = "",
+) -> str:
+    """Render a minimal ASCII line chart.  Returns a multi-line string."""
+    if not xs or not ys:
+        return f"  [{title}: no data]\n"
+
+    x_min, x_max = min(xs), max(xs)
+    y_min, y_max = min(ys), max(ys)
+
+    # Guard against flat lines
+    x_span = x_max - x_min or 1.0
+    y_span = y_max - y_min or abs(y_min) * 0.01 or 1e-12
+
+    def to_col(x: float) -> int:
+        return min(width - 1, max(0, int((x - x_min) / x_span * (width - 1))))
+
+    def to_row(y: float) -> int:
+        # row 0 = top (y_max), row height-1 = bottom (y_min)
+        return min(height - 1, max(0, int((y_max - y) / y_span * (height - 1))))
+
+    # Build empty grid
+    grid: list[list[str]] = [[" "] * width for _ in range(height)]
+
+    # Plot the line by connecting consecutive points
+    for i in range(len(xs) - 1):
+        c0, r0 = to_col(xs[i]), to_row(ys[i])
+        c1, r1 = to_col(xs[i + 1]), to_row(ys[i + 1])
+        # Bresenham-style column scan
+        steps = max(abs(c1 - c0), 1)
+        for s in range(steps + 1):
+            t = s / steps
+            c = int(c0 + t * (c1 - c0))
+            r = int(r0 + t * (r1 - r0))
+            grid[r][c] = "─"
+        grid[r0][c0] = "·"
+        grid[r1][c1] = "·"
+
+    # Mark vertical glitch lines
+    for vx in (vlines or []):
+        vc = to_col(vx)
+        for r in range(height):
+            if grid[r][vc] == " ":
+                grid[r][vc] = "│"
+
+    # Assemble with y-axis labels
+    y_label_width = 10
+    buf = io.StringIO()
+    if title:
+        buf.write(f"  {title}\n")
+    for r, row in enumerate(grid):
+        # Left axis label at top, middle, bottom rows
+        if r == 0:
+            label = f"{y_max:>{y_label_width - 1}.3e}"
+        elif r == height // 2:
+            mid = (y_max + y_min) / 2
+            label = f"{mid:>{y_label_width - 1}.3e}"
+        elif r == height - 1:
+            label = f"{y_min:>{y_label_width - 1}.3e}"
+        else:
+            label = " " * (y_label_width - 1)
+        buf.write(f"{label} │{''.join(row)}\n")
+    # X-axis
+    buf.write(" " * y_label_width + "└" + "─" * width + "\n")
+    # X labels
+    x_left = f"{x_min:.0f}"
+    x_right = f"{x_max:.0f}"
+    x_mid = f"{(x_min + x_max) / 2:.0f}"
+    pad = width - len(x_left) - len(x_right)
+    mid_pos = max(0, (width // 2) - len(x_mid) // 2 - len(x_left))
+    buf.write(" " * y_label_width + " " + x_left + " " * mid_pos + x_mid +
+              " " * max(0, pad - mid_pos - len(x_mid)) + x_right + "\n")
+    if xlabel:
+        total = y_label_width + 1 + width
+        buf.write(" " * ((total - len(xlabel)) // 2) + xlabel + "\n")
+    if ylabel:
+        buf.write(f"  y: {ylabel}" + (f"  [{y_unit}]" if y_unit else "") + "\n")
+    return buf.getvalue()
+
+
+def _bar_chart(labels: list[str], values: list[float], *, title: str = "", bar_width: int = 40) -> str:
+    """Render a simple horizontal bar chart."""
+    if not values:
+        return f"  [{title}: no data]\n"
+    v_max = max(values) or 1.0
+    buf = io.StringIO()
+    if title:
+        buf.write(f"  {title}\n")
+    for lbl, val in zip(labels, values):
+        filled = int(val / v_max * bar_width)
+        bar = "█" * filled + "░" * (bar_width - filled)
+        buf.write(f"  {lbl:>8s} │{bar}│ {val:.4f}\n")
+    buf.write(f"  {'':>8s}  0{'':>{bar_width - 1}}{v_max:.4f}\n")
+    return buf.getvalue()
+
+
+def print_plot(result: SimulationResult, analysis: dict, *, output_file: Path | None = None) -> None:
+    """Render three ASCII panels: ν_c(t), lag δω(t), and per-glitch permanent fractions."""
+    glitch_days = [g.epoch_day for g in result.glitches]
+
+    # Downsample time-series to ≤ 500 points for readability
+    total = len(result.times_days)
+    step = max(1, total // 500)
+    t_ds = result.times_days[::step]
+    nu_ds = result.nu_crust_hz[::step]
+    lag_ds = result.lag_hz[::step]
+
+    divider = "─" * 84 + "\n"
+
+    sections = [
+        "╔══════════════════════════════════════════════════════════════════════════════════╗\n"
+        "║         VELA PULSAR CRUST MEMORY SIMULATION  —  ASCII TERMINAL PLOT             ║\n"
+        "╚══════════════════════════════════════════════════════════════════════════════════╝\n",
+
+        divider,
+        "  Panel 1 · Crust spin frequency ν_c(t)\n",
+        _ascii_chart(t_ds, nu_ds,
+                     title="",
+                     xlabel="Time [days]",
+                     ylabel="ν_c",
+                     y_unit="Hz",
+                     vlines=glitch_days),
+
+        divider,
+        "  Panel 2 · Superfluid–crust lag δω(t)  (│ = glitch epoch)\n",
+        _ascii_chart(t_ds, lag_ds,
+                     title="",
+                     xlabel="Time [days]",
+                     ylabel="δω = ν_s − ν_c",
+                     y_unit="Hz",
+                     vlines=glitch_days),
+
+        divider,
+        "  Panel 3 · Per-glitch permanent fraction  (H19 threshold = 0.01)\n",
+    ]
+
+    if result.glitches:
+        bar_labels = [f"G{i}" for i in range(len(result.glitches))]
+        bar_values = [g.permanent_fraction for g in result.glitches]
+        sections.append(_bar_chart(bar_labels, bar_values, bar_width=40))
+    else:
+        sections.append("  No glitches to display.\n")
+
+    # Summary footer
+    gc = analysis.get("glitch_count", 0)
+    h19 = "PASS ✓" if analysis.get("h19_passes") else "FAIL ✗"
+    sections += [
+        divider,
+        f"  Glitches: {gc}  |  Mean Δν/ν: {analysis.get('mean_delta_nu_over_nu', 0):.2e}"
+        f"  |  Mean f_p: {analysis.get('mean_permanent_fraction', 0):.4f}"
+        f"  |  Mean interval: {analysis.get('mean_interval_days', 0):.0f} days"
+        f"  |  H19: {h19}\n",
+    ]
+
+    output = "".join(sections)
+    if output_file:
+        output_file.write_text(output, encoding="utf-8")
+        print(f"Plot written : {output_file}")
+    else:
+        print(output, end="")
+
+
+def print_json(bundle: dict, *, output_file: Path | None = None) -> None:
+    """Dump the full simulation bundle as formatted JSON."""
+    text = json.dumps(bundle, indent=2, ensure_ascii=False)
+    if output_file:
+        output_file.write_text(text, encoding="utf-8")
+        print(f"JSON written : {output_file}")
+    else:
+        print(text)
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -582,8 +768,29 @@ def parse_args() -> argparse.Namespace:
                         help="Output inbox directory (default: ./inbox)")
     parser.add_argument("--supports-hypothesis", default=None,
                         help="Existing hypothesis ID to link as direct support (e.g. H19)")
-    parser.add_argument("--no-write", action="store_true",
-                        help="Print summary only; do not write bundle files")
+    parser.add_argument(
+        "--format", dest="output_format",
+        choices=["text", "json", "plot"],
+        default="text",
+        help=(
+            "Output format: "
+            "'text' prints a human-readable summary (default); "
+            "'json' prints the full evidence bundle as JSON; "
+            "'plot' renders ASCII charts of ν_c(t), lag δω(t), and per-glitch memory fractions."
+        ),
+    )
+    parser.add_argument(
+        "--output-file", default=None,
+        help=(
+            "Write formatted output to this file instead of stdout "
+            "(applies to --format json and --format plot; "
+            "bundle JSON/MD are always written to --inbox unless --no-bundle is set)."
+        ),
+    )
+    parser.add_argument("--no-bundle", action="store_true",
+                        help="Skip writing the Manatuabon inbox bundle (JSON + MD report).")
+    # Keep legacy --no-write as alias for --no-bundle
+    parser.add_argument("--no-write", action="store_true", help=argparse.SUPPRESS)
     return parser.parse_args()
 
 
@@ -597,30 +804,56 @@ def main() -> int:
         seed=args.seed,
     )
 
-    print(f"Running Vela crust memory simulation: {args.duration_days:.0f} days, seed={args.seed}")
-    result = sim.simulate(args.duration_days)
+    import sys as _sys
+    _banner = f"Running Vela crust memory simulation: {args.duration_days:.0f} days, seed={args.seed}"
+    # For machine-readable formats (json/plot-to-file) keep stdout clean; use stderr for the banner
+    if args.output_format in ("json",) and not args.output_file:
+        print(_banner, file=_sys.stderr)
+    else:
+        print(_banner)
 
+    result = sim.simulate(args.duration_days)
     analysis = analyze_memory(result)
 
-    print(f"  Glitches detected : {analysis['glitch_count']}")
-    if analysis["glitch_count"] > 0:
-        print(f"  Mean Δν/ν         : {analysis['mean_delta_nu_over_nu']:.3e}")
-        print(f"  Mean f_p          : {analysis['mean_permanent_fraction']:.4f}")
-        print(f"  Mean interval     : {analysis['mean_interval_days']:.1f} ± {analysis['std_interval_days']:.1f} days")
-        h19_str = "PASS" if analysis["h19_passes"] else "FAIL"
-        print(f"  H19 (f_p>=0.01)  : {h19_str}")
+    output_file = Path(args.output_file) if args.output_file else None
+    skip_bundle = args.no_write or args.no_bundle
 
-    if args.no_write:
-        return 0
+    if args.output_format == "json":
+        bundle = build_simulation_bundle(
+            result, analysis, supports_hypothesis=args.supports_hypothesis
+        )
+        print_json(bundle, output_file=output_file)
+        if not skip_bundle:
+            json_path, md_path = write_bundle(bundle, Path(args.inbox))
+            print(f"Bundle written : {json_path}")
+            print(f"Report written : {md_path}")
 
-    bundle = build_simulation_bundle(
-        result,
-        analysis,
-        supports_hypothesis=args.supports_hypothesis,
-    )
-    json_path, md_path = write_bundle(bundle, Path(args.inbox))
-    print(f"Bundle written : {json_path}")
-    print(f"Report written : {md_path}")
+    elif args.output_format == "plot":
+        bundle = build_simulation_bundle(
+            result, analysis, supports_hypothesis=args.supports_hypothesis
+        )
+        print_plot(result, analysis, output_file=output_file)
+        if not skip_bundle:
+            json_path, md_path = write_bundle(bundle, Path(args.inbox))
+            print(f"Bundle written : {json_path}")
+            print(f"Report written : {md_path}")
+
+    else:  # "text" (default)
+        print(f"  Glitches detected : {analysis['glitch_count']}")
+        if analysis["glitch_count"] > 0:
+            print(f"  Mean Δν/ν         : {analysis['mean_delta_nu_over_nu']:.3e}")
+            print(f"  Mean f_p          : {analysis['mean_permanent_fraction']:.4f}")
+            print(f"  Mean interval     : {analysis['mean_interval_days']:.1f} ± {analysis['std_interval_days']:.1f} days")
+            h19_str = "PASS" if analysis["h19_passes"] else "FAIL"
+            print(f"  H19 (f_p>=0.01)  : {h19_str}")
+        if not skip_bundle:
+            bundle = build_simulation_bundle(
+                result, analysis, supports_hypothesis=args.supports_hypothesis
+            )
+            json_path, md_path = write_bundle(bundle, Path(args.inbox))
+            print(f"Bundle written : {json_path}")
+            print(f"Report written : {md_path}")
+
     return 0
 
 
