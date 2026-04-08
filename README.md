@@ -4,6 +4,8 @@
 
 Manatuabon is a local-first, human-governed astrophysics reasoning workspace with optional Claude cloud escalation for deep review. It combines structured evidence ingest, a hypothesis council, and a local memory/database layer so new material can be reviewed with provenance instead of being treated as autonomous truth.
 
+> **Personal hobby / research project.** Manatuabon is a personal, evidence-oriented workspace built for version-controlled astrophysics reasoning. It prioritises provenance, deterministic review, and human judgment over automated conclusions. It is **not** intended as a general-purpose scientific platform, a production system, or a replacement for peer-reviewed tooling — it is a private research scratchpad with governance discipline baked in.
+
 ## Core Direction
 
 - Local-first hybrid runtime: the core workflow keeps working with local models, local SQLite state, and fetch-and-freeze evidence snapshots, while selected deep-review paths can escalate to Claude when explicitly configured.
