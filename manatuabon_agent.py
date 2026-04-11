@@ -2072,12 +2072,53 @@ Created: {metadata.get('created', 'unknown')}
         elif raw_json and isinstance(raw_json, dict) and raw_json.get("manatuabon_context"):
             metadata_payload["manatuabon_context"] = raw_json.get("manatuabon_context")
 
+        # Enrich summary with structured evidence so it persists in the DB content field
+        enriched_summary = result.get("summary", f"Ingested {filepath.name}")
+        if structured_result:
+            se = structured_result.get("structured_metadata", {}).get("structured_evidence", {})
+            if se:
+                parts = [enriched_summary]
+                pub = se.get("publication", {})
+                if pub:
+                    cite_parts = []
+                    if pub.get("authors"):
+                        cite_parts.append(f"Authors: {', '.join(pub['authors'])}")
+                    if pub.get("title"):
+                        cite_parts.append(f"Title: {pub['title']}")
+                    if pub.get("journal"):
+                        jref = pub["journal"]
+                        if pub.get("volume"):
+                            jref += f" {pub['volume']}"
+                        if pub.get("article_id"):
+                            jref += f", {pub['article_id']}"
+                        if pub.get("year"):
+                            jref += f" ({pub['year']})"
+                        cite_parts.append(f"Journal: {jref}")
+                    if pub.get("doi"):
+                        cite_parts.append(f"DOI: {pub['doi']}")
+                    if pub.get("arxiv"):
+                        cite_parts.append(f"arXiv: {pub['arxiv']}")
+                    if pub.get("bibcode"):
+                        cite_parts.append(f"Bibcode: {pub['bibcode']}")
+                    if cite_parts:
+                        parts.append("--- Citation ---")
+                        parts.extend(cite_parts)
+                kr = se.get("key_results", {})
+                if kr:
+                    parts.append("--- Key Results ---")
+                    for k, v in kr.items():
+                        parts.append(f"{k}: {v}")
+                rel = se.get("relevance_to_crustal_memory") or se.get("relevance")
+                if rel:
+                    parts.append(f"--- Relevance --- {rel}")
+                enriched_summary = "\n".join(parts)
+
         # Build memory object
         memory_obj = {
             "timestamp": datetime.now().isoformat(),
             "source_file": filepath.name,
             "source_type": self._classify_source(filepath),
-            "summary": result.get("summary", f"Ingested {filepath.name}"),
+            "summary": enriched_summary,
             "entities": result.get("entities", []),
             "topics": result.get("topics", []),
             "anomalies": result.get("anomalies", []),

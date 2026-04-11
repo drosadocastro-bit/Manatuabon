@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manatuabon — Hypothesis Wiki</title>
+<style>
+  /* ── Reset & Base ──────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080c14;
+    --surface:   #0d1424;
+    --panel:     #111928;
+    --border:    #1e2d4a;
+    --border2:   #243352;
+    --text:      #c8d6f0;
+    --muted:     #6b82a8;
+    --accent:    #4e8ef7;
+    --accent2:   #2d5fc4;
+    --gold:      #e8b84b;
+    --green:     #3ecf8e;
+    --red:       #f05d5d;
+    --amber:     #f5a623;
+    --purple:    #a78bfa;
+    --teal:      #2dd4bf;
+    --tier-a:    #3ecf8e;
+    --tier-b:    #4e8ef7;
+    --tier-c:    #a78bfa;
+    --tier-d:    #f5a623;
+    --glow:      rgba(78,142,247,0.15);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Star field background ───────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(200,214,240,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 25% 55%, rgba(200,214,240,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 40% 10%, rgba(200,214,240,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 80%, rgba(200,214,240,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 35%, rgba(200,214,240,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 65%, rgba(200,214,240,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 92% 15%, rgba(200,214,240,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 5%  90%, rgba(200,214,240,0.3) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 32% 42%, rgba(200,214,240,0.6) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 67% 88%, rgba(200,214,240,0.5) 0%, transparent 100%),
+      radial-gradient(2px 2px at 78% 5%,  rgba(78,142,247,0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 18% 75%, rgba(78,142,247,0.3) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(8,12,20,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+
+  .header-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 58px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #6ea8ff 0%, #2d5fc4 55%, #0a1a40 100%);
+    box-shadow: 0 0 12px rgba(78,142,247,0.5);
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #fff;
+  }
+
+  .logo-text span {
+    color: var(--accent);
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: -2px;
+  }
+
+  .header-sep {
+    flex: 1;
+  }
+
+  #search-box {
+    width: 260px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  #search-box::placeholder { color: var(--muted); }
+  #search-box:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--glow);
+  }
+
+  .live-dot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .live-dot::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  .live-dot.offline::before {
+    background: var(--red);
+    box-shadow: 0 0 6px var(--red);
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  #refresh-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  #refresh-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Main layout ─────────────────────────────────────────────── */
+  .container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 28px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Stats bar ────────────────────────────────────────────────── */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-pill .label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .stat-pill .value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .stat-pill .value.accent  { color: var(--accent); }
+  .stat-pill .value.green   { color: var(--green); }
+  .stat-pill .value.amber   { color: var(--amber); }
+  .stat-pill .value.red     { color: var(--red); }
+  .stat-pill .value.purple  { color: var(--purple); }
+
+  /* ── Filter tabs ─────────────────────────────────────────────── */
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .filter-tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+
+  .filter-tab:hover { border-color: var(--accent); color: var(--text); }
+
+  .filter-tab.active {
+    background: var(--accent2);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .sort-label {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  #sort-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* ── Hypothesis grid ─────────────────────────────────────────── */
+  #hyp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 18px;
+  }
+
+  /* ── Hypothesis card ─────────────────────────────────────────── */
+  .hyp-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    cursor: pointer;
+  }
+
+  .hyp-card:hover {
+    border-color: var(--border2);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px var(--border2);
+    transform: translateY(-2px);
+  }
+
+  .hyp-card.expanded {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 32px rgba(78,142,247,0.2);
+    cursor: default;
+  }
+
+  .card-header {
+    padding: 16px 18px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hyp-id-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .card-title-group {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e8edf8;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .card-title-group .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Status badges ───────────────────────────────────────────── */
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .badge-proposed      { background: rgba(107,130,168,0.2); color: var(--muted); border: 1px solid rgba(107,130,168,0.4); }
+  .badge-active        { background: rgba(78,142,247,0.15); color: var(--accent); border: 1px solid rgba(78,142,247,0.4); }
+  .badge-accepted      { background: rgba(62,207,142,0.15); color: var(--green); border: 1px solid rgba(62,207,142,0.4); }
+  .badge-rejected      { background: rgba(240,93,93,0.15);  color: var(--red);   border: 1px solid rgba(240,93,93,0.4); }
+  .badge-rejected_auto { background: rgba(240,93,93,0.10);  color: #c44;         border: 1px solid rgba(200,80,80,0.3); }
+  .badge-held          { background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.4); }
+  .badge-needs_revision{ background: rgba(245,166,35,0.15); color: var(--amber); border: 1px solid rgba(245,166,35,0.4); }
+  .badge-merged        { background: rgba(45,212,191,0.15); color: var(--teal);  border: 1px solid rgba(45,212,191,0.4); }
+  .badge-unknown       { background: rgba(107,130,168,0.1); color: var(--muted); border: 1px solid rgba(107,130,168,0.3); }
+
+  /* ── Confidence bar ──────────────────────────────────────────── */
+  .conf-section {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .conf-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .conf-label { font-size: 11px; color: var(--muted); width: 72px; flex-shrink: 0; }
+
+  .conf-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--panel);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .conf-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.25,0.8,0.25,1);
+  }
+
+  .conf-pct {
+    font-size: 12px;
+    font-weight: 700;
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── Card body ───────────────────────────────────────────────── */
+  .card-body {
+    padding: 14px 18px;
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0.85;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .card-desc.expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+
+  .expand-btn {
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.18s;
+    width: 100%;
+    text-align: center;
+  }
+
+  .expand-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Expanded detail panel ───────────────────────────────────── */
+  .detail-panel {
+    display: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .detail-panel.visible { display: block; }
+
+  .detail-section {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-section:last-child { border-bottom: none; }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Evidence tiers ──────────────────────────────────────────── */
+  .evidence-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ev-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .ev-item .ev-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .tier-badge {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .tier-A { background: rgba(62,207,142,0.2);  color: var(--tier-a); border: 1px solid rgba(62,207,142,0.4); }
+  .tier-B { background: rgba(78,142,247,0.2);  color: var(--tier-b); border: 1px solid rgba(78,142,247,0.4); }
+  .tier-C { background: rgba(167,139,250,0.2); color: var(--tier-c); border: 1px solid rgba(167,139,250,0.4); }
+  .tier-D { background: rgba(245,166,35,0.2);  color: var(--tier-d); border: 1px solid rgba(245,166,35,0.4); }
+  .tier-U { background: rgba(107,130,168,0.1); color: var(--muted);  border: 1px solid rgba(107,130,168,0.2); }
+
+  .ev-text { color: var(--text); line-height: 1.5; }
+  .ev-meta { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Council verdict ─────────────────────────────────────────── */
+  .verdict-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .verdict-decision {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-transform: capitalize;
+  }
+
+  .verdict-rationale {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.8;
+    line-height: 1.6;
+  }
+
+  .verdict-agents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .agent-vote {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .agent-vote.approve { border-color: rgba(62,207,142,0.4); color: var(--green); }
+  .agent-vote.reject  { border-color: rgba(240,93,93,0.4);  color: var(--red); }
+  .agent-vote.hold    { border-color: rgba(167,139,250,0.4); color: var(--purple); }
+
+  /* ── Criteria columns ────────────────────────────────────────── */
+  .criteria-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .criteria-col h4 {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .criteria-col.confirm h4 { color: var(--green); }
+  .criteria-col.falsify h4 { color: var(--red); }
+
+  .criteria-col ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .criteria-col ul li {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.85;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .criteria-col.confirm ul li::before { content: '+'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  .criteria-col.falsify ul li::before { content: '-'; position: absolute; left: 0; color: var(--red);   font-weight: 700; }
+
+  /* ── Review list ─────────────────────────────────────────────── */
+  .review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .review-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+
+  .review-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .agent-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: var(--accent);
+  }
+
+  .review-vote {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    text-transform: capitalize;
+  }
+
+  .vote-approve { background: rgba(62,207,142,0.15); color: var(--green); }
+  .vote-reject  { background: rgba(240,93,93,0.15);  color: var(--red); }
+  .vote-hold    { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .vote-needs_revision { background: rgba(245,166,35,0.15); color: var(--amber); }
+  .vote-abstain { background: rgba(107,130,168,0.15); color: var(--muted); }
+
+  .review-ts { font-size: 10px; color: var(--muted); margin-left: auto; }
+
+  .review-body {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.85;
+    line-height: 1.6;
+  }
+
+  /* ── Revision history ────────────────────────────────────────── */
+  .revision-history {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .rev-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: var(--panel);
+    border-radius: 5px;
+    border: 1px solid var(--border);
+  }
+
+  .rev-cycle {
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* ── Simulation findings ─────────────────────────────────────── */
+  .sim-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .sim-box .sim-type {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+
+  /* ── Loading / error states ──────────────────────────────────── */
+  #loading-state, #error-state {
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error-state .err-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  #error-state p { margin-bottom: 6px; }
+
+  #error-state .err-hint {
+    font-size: 12px;
+    margin-top: 8px;
+    opacity: 0.7;
+  }
+
+  #empty-state {
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--muted);
+    display: none;
+  }
+
+  /* ── Detail loading overlay ──────────────────────────────────── */
+  .detail-loading {
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .detail-loading .mini-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 8px;
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── Footer ──────────────────────────────────────────────────── */
+  footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(8,12,20,0.88);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    z-index: 50;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 700px) {
+    #hyp-grid { grid-template-columns: 1fr; }
+    .criteria-cols { grid-template-columns: 1fr; }
+    #search-box { width: 160px; }
+    .logo-sub { display: none; }
+  }
+
+  /* ── Tooltip ─────────────────────────────────────────────────── */
+  [title] { cursor: help; }
+
+  /* ── Tag chips ───────────────────────────────────────────────── */
+  .tag-chip {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── Highlighted search match ────────────────────────────────── */
+  mark {
+    background: rgba(78,142,247,0.3);
+    color: #fff;
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+
+  /* ── No-transition helper ────────────────────────────────────── */
+  .no-transition * { transition: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div>
+        <div class="logo-text">MANA<span>TUABON</span></div>
+        <div class="logo-sub">Hypothesis Wiki</div>
+      </div>
+    </div>
+
+    <div class="header-sep"></div>
+
+    <input type="search" id="search-box" placeholder="Search hypotheses…" autocomplete="off">
+
+    <div class="live-dot" id="live-indicator" title="Bridge connection status">Bridge live</div>
+
+    <button id="refresh-btn" title="Reload from bridge">Refresh</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-pill"><div class="label">Total</div><div class="value accent" id="st-total">—</div></div>
+    <div class="stat-pill"><div class="label">Accepted</div><div class="value green" id="st-accepted">—</div></div>
+    <div class="stat-pill"><div class="label">Active</div><div class="value accent" id="st-active">—</div></div>
+    <div class="stat-pill"><div class="label">Needs Revision</div><div class="value amber" id="st-revision">—</div></div>
+    <div class="stat-pill"><div class="label">Held</div><div class="value purple" id="st-held">—</div></div>
+    <div class="stat-pill"><div class="label">Rejected</div><div class="value red" id="st-rejected">—</div></div>
+    <div class="stat-pill"><div class="label">Mean Confidence</div><div class="value accent" id="st-mean-conf">—</div></div>
+  </div>
+
+  <!-- Filter row -->
+  <div class="filter-row" id="filter-row">
+    <button class="filter-tab active" data-status="all">All</button>
+    <button class="filter-tab" data-status="accepted">Accepted</button>
+    <button class="filter-tab" data-status="active">Active</button>
+    <button class="filter-tab" data-status="needs_revision">Needs Revision</button>
+    <button class="filter-tab" data-status="held">Held</button>
+    <button class="filter-tab" data-status="proposed">Proposed</button>
+    <button class="filter-tab" data-status="rejected">Rejected</button>
+
+    <span class="sort-label">Sort:</span>
+    <select id="sort-select">
+      <option value="confidence_desc">Confidence ↓</option>
+      <option value="confidence_asc">Confidence ↑</option>
+      <option value="id_asc">ID A→Z</option>
+      <option value="id_desc">ID Z→A</option>
+      <option value="title_asc">Title A→Z</option>
+      <option value="status_asc">Status</option>
+    </select>
+  </div>
+
+  <!-- Loading state -->
+  <div id="loading-state">
+    <div class="spinner"></div>
+    <div>Connecting to Manatuabon bridge…</div>
+  </div>
+
+  <!-- Error state -->
+  <div id="error-state" style="display:none">
+    <div class="err-icon">📡</div>
+    <p>Could not reach the Manatuabon bridge at <strong>http://localhost:7777</strong></p>
+    <p style="font-size:12px;margin-top:6px;opacity:0.7">Make sure <code>start_manatuabon.ps1</code> is running.</p>
+    <p class="err-hint" id="error-detail"></p>
+    <button id="retry-btn" onclick="loadHypotheses()" style="
+      margin-top:20px; padding:8px 24px; border-radius:6px;
+      background:var(--accent2); border:none; color:#fff; font-size:13px; cursor:pointer;">
+      Retry
+    </button>
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state">
+    <div style="font-size:32px;margin-bottom:12px;">🔭</div>
+    <div>No hypotheses match your filters.</div>
+  </div>
+
+  <!-- Card grid -->
+  <div id="hyp-grid" style="display:none"></div>
+</div>
+
+<footer>
+  <span>Manatuabon &mdash; Local-first Astrophysics Reasoning Workspace &mdash; Bayam&oacute;n, PR</span>
+  <span>
+    <a href="http://localhost:7777/api/hypotheses/all" target="_blank">API</a>
+    &nbsp;&bull;&nbsp;
+    <a href="http://localhost:8765/manatuabon_v5.html" target="_blank">Dashboard</a>
+    &nbsp;&bull;&nbsp;
+    <span id="footer-ts">—</span>
+  </span>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   Manatuabon Wiki — Front-end engine
+   ═══════════════════════════════════════════════════════════════ */
+
+const BRIDGE = 'http://localhost:7777';
+const ENDPOINTS = {
+  all:     `${BRIDGE}/api/hypotheses/all`,
+  reviews: (id) => `${BRIDGE}/api/council/reviews?hyp_id=${encodeURIComponent(id)}`,
+};
+
+let allHypotheses = [];
+let activeFilter  = 'all';
+let activeSearch  = '';
+let activeSort    = 'confidence_desc';
+let expandedIds   = new Set();   // which cards are expanded
+let detailCache   = {};          // hyp_id -> review data
+
+
+/* ── Fetch ────────────────────────────────────────────────────── */
+
+async function loadHypotheses() {
+  setView('loading');
+  try {
+    const res  = await fetch(ENDPOINTS.all, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allHypotheses = Array.isArray(data) ? data : (data.hypotheses || []);
+    updateStats();
+    render();
+    setLive(true);
+    document.getElementById('footer-ts').textContent = 'Loaded ' + fmtTime(new Date());
+  } catch (err) {
+    setLive(false);
+    setView('error');
+    document.getElementById('error-detail').textContent = String(err);
+  }
+}
+
+async function loadDetail(hypId) {
+  if (detailCache[hypId]) return detailCache[hypId];
+  try {
+    const res  = await fetch(ENDPOINTS.reviews(hypId), { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    detailCache[hypId] = data;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+
+/* ── Stats ────────────────────────────────────────────────────── */
+
+function updateStats() {
+  const counts = {};
+  let confSum = 0, confN = 0;
+  for (const h of allHypotheses) {
+    const s = normalizeStatus(h);
+    counts[s] = (counts[s] || 0) + 1;
+    if (h.confidence != null) { confSum += parseFloat(h.confidence); confN++; }
+  }
+  set('st-total',    allHypotheses.length);
+  set('st-accepted', counts.accepted || 0);
+  set('st-active',   counts.active   || 0);
+  set('st-revision', counts.needs_revision || 0);
+  set('st-held',     counts.held     || 0);
+  set('st-rejected', (counts.rejected || 0) + (counts.rejected_auto || 0));
+  set('st-mean-conf', confN ? Math.round(confSum / confN * 100) + '%' : '—');
+}
+
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+
+/* ── Render grid ─────────────────────────────────────────────── */
+
+function render() {
+  const grid = document.getElementById('hyp-grid');
+  grid.innerHTML = '';
+
+  let list = allHypotheses.filter(h => {
+    if (activeFilter !== 'all' && normalizeStatus(h) !== activeFilter) return false;
+    if (activeSearch) {
+      const q = activeSearch.toLowerCase();
+      const text = [h.id, h.title, h.description, h.status].join(' ').toLowerCase();
+      if (!text.includes(q)) return false;
+    }
+    return true;
+  });
+
+  list = sortList(list);
+
+  if (!list.length) {
+    setView('empty');
+    return;
+  }
+
+  setView('grid');
+  list.forEach(h => grid.appendChild(buildCard(h)));
+
+  // re-expand any previously-expanded cards
+  expandedIds.forEach(id => {
+    const card = document.getElementById('card-' + id);
+    if (card) triggerExpand(card, id, false);
+  });
+}
+
+function sortList(list) {
+  const copy = [...list];
+  switch (activeSort) {
+    case 'confidence_desc': return copy.sort((a,b) => (parseFloat(b.confidence)||0) - (parseFloat(a.confidence)||0));
+    case 'confidence_asc':  return copy.sort((a,b) => (parseFloat(a.confidence)||0) - (parseFloat(b.confidence)||0));
+    case 'id_asc':          return copy.sort((a,b) => String(a.id).localeCompare(String(b.id)));
+    case 'id_desc':         return copy.sort((a,b) => String(b.id).localeCompare(String(a.id)));
+    case 'title_asc':       return copy.sort((a,b) => String(a.title).localeCompare(String(b.title)));
+    case 'status_asc':      return copy.sort((a,b) => normalizeStatus(a).localeCompare(normalizeStatus(b)));
+    default: return copy;
+  }
+}
+
+
+/* ── Card builder ────────────────────────────────────────────── */
+
+function buildCard(h) {
+  const status  = normalizeStatus(h);
+  const conf    = parseFloat(h.confidence) || 0;
+  const confPct = Math.round(conf * 100);
+  const confColor = confColor_(conf);
+
+  const card = document.createElement('div');
+  card.className = 'hyp-card' + (expandedIds.has(h.id) ? ' expanded' : '');
+  card.id = 'card-' + h.id;
+
+  // Evidence summary
+  const evItems = parseEvidence(h.evidence);
+  const tierCounts = countTiers(evItems);
+  const tierSummary = Object.entries(tierCounts)
+    .sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([t,n]) => `<span class="tier-badge tier-${t}">${t}: ${n}</span>`)
+    .join(' ');
+
+  // Tags
+  let tags = '';
+  if (h.tags) {
+    const tagArr = Array.isArray(h.tags) ? h.tags : String(h.tags).split(',').map(t=>t.trim()).filter(Boolean);
+    tags = tagArr.slice(0,4).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('');
+  }
+
+  // Decision badge text
+  const decisionText = h.latest_decision ? (h.latest_decision.decision || '') : '';
+
+  card.innerHTML = `
+    <div class="card-header" data-hyp-id="${esc(h.id)}" style="cursor:pointer" title="Click to expand">
+      <div class="hyp-id-badge">${esc(h.id || '?')}</div>
+      <div class="card-title-group">
+        <div class="card-title">${esc(h.title || 'Untitled Hypothesis')}</div>
+        <div class="meta-row">
+          <span class="badge badge-${status}">${fmtStatus(status)}</span>
+          ${decisionText ? `<span class="badge badge-${decisionText}" style="opacity:0.7" title="Council verdict">${fmtStatus(decisionText)}</span>` : ''}
+          ${tierSummary}
+          ${tags}
+        </div>
+      </div>
+    </div>
+
+    <div class="conf-section">
+      <div class="conf-row">
+        <span class="conf-label">Confidence</span>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-fill"
+               style="width:${confPct}%; background:${confColor}; box-shadow: 0 0 6px ${confColor}40;">
+          </div>
+        </div>
+        <span class="conf-pct" style="color:${confColor}">${confPct}%</span>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="card-desc ${expandedIds.has(h.id) ? 'expanded' : ''}">
+        ${esc(h.description || 'No description.')}
+      </div>
+      <button class="expand-btn" data-hyp-id="${esc(h.id)}">
+        ${expandedIds.has(h.id) ? 'Collapse ▲' : 'View full detail ▼'}
+      </button>
+    </div>
+
+    <div class="detail-panel ${expandedIds.has(h.id) ? 'visible' : ''}" id="detail-${h.id}">
+      <div class="detail-loading" id="loading-${h.id}">
+        <div class="mini-spinner"></div>
+        Loading detail from bridge…
+      </div>
+    </div>
+  `;
+
+  // Events
+  card.querySelector('.card-header').addEventListener('click', () => {
+    toggleCard(card, h.id);
+  });
+  card.querySelector('.expand-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleCard(card, h.id);
+  });
+
+  return card;
+}
+
+
+/* ── Expand / collapse ────────────────────────────────────────── */
+
+function toggleCard(card, hypId) {
+  const isExpanded = expandedIds.has(hypId);
+  if (isExpanded) {
+    collapseCard(card, hypId);
+  } else {
+    triggerExpand(card, hypId, true);
+  }
+}
+
+function collapseCard(card, hypId) {
+  expandedIds.delete(hypId);
+  card.classList.remove('expanded');
+  const panel = card.querySelector('.detail-panel');
+  const desc  = card.querySelector('.card-desc');
+  const btn   = card.querySelector('.expand-btn');
+  if (panel) panel.classList.remove('visible');
+  if (desc)  desc.classList.remove('expanded');
+  if (btn)   btn.textContent = 'View full detail ▼';
+}
+
+async function triggerExpand(card, hypId, animate) {
+  expandedIds.add(hypId);
+  card.classList.add('expanded');
+  const panel = card.querySelector('.detail-panel');
+  const desc  = card.querySelector('.card-desc');
+  const btn   = card.querySelector('.expand-btn');
+  if (panel) panel.classList.add('visible');
+  if (desc)  desc.classList.add('expanded');
+  if (btn)   btn.textContent = 'Collapse ▲';
+
+  const hyp = allHypotheses.find(h => h.id === hypId);
+  if (!hyp) return;
+
+  const loadingEl = document.getElementById('loading-' + hypId);
+
+  // Already rendered?
+  if (detailCache[hypId] && !loadingEl) return;
+  if (!loadingEl) return;  // already filled
+
+  const detail = await loadDetail(hypId);
+  if (!loadingEl.parentNode) return;  // panel was removed
+
+  loadingEl.remove();
+  renderDetailInto(panel, hyp, detail);
+
+  if (animate) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+
+/* ── Detail renderer ─────────────────────────────────────────── */
+
+function renderDetailInto(panel, hyp, detail) {
+  const evItems = parseEvidence(hyp.evidence);
+
+  let html = '';
+
+  // Evidence section
+  html += `<div class="detail-section">`;
+  html += `<div class="section-title">Evidence (${evItems.length} items)</div>`;
+  if (evItems.length) {
+    html += `<div class="evidence-list">`;
+    evItems.forEach(ev => {
+      html += `<div class="ev-item">
+        <div class="ev-head">
+          <span class="tier-badge tier-${ev.tier || 'U'}">${ev.tier || '?'}</span>
+          <span class="ev-text">${esc(ev.text || ev.description || ev.summary || JSON.stringify(ev))}</span>
+        </div>
+        ${ev.source ? `<div class="ev-meta">Source: ${esc(ev.source)}</div>` : ''}
+        ${ev.date   ? `<div class="ev-meta">Date: ${esc(ev.date)}</div>`   : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div style="font-size:12px;color:var(--muted)">No structured evidence yet.</div>`;
+  }
+  html += `</div>`;
+
+  // Council verdict
+  if (detail && detail.decision) {
+    const d = detail.decision;
+    html += `<div class="detail-section">`;
+    html += `<div class="section-title">Council Verdict</div>`;
+    html += `<div class="verdict-box">
+      <div class="verdict-decision" style="color:${decisionColor(d.decision)}">${fmtStatus(d.decision || 'unknown')}</div>
+      <div class="verdict-rationale">${esc(d.rationale || d.reasoning || 'No rationale recorded.')}</div>
+      ${d.confidence != null ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">Confidence at verdict: ${Math.round(d.confidence * 100)}%</div>` : ''}
+    </div>`;
+    html += `</div>`;
+  }
+
+  // Agent reviews
+  if (detail && detail.reviews && detail.reviews.length) {
+    html += `<div class="detail-section">`;
+    html += `<div class="section-title">Agent Reviews (${detail.reviews.length})</div>`;
+    html += `<div class="review-list">`;
+    detail.reviews.forEach(r => {
+      const voteClass = 'vote-' + (r.vote || r.recommendation || 'abstain').replace(/\s/g,'_');
+      html += `<div class="review-item">
+        <div class="review-head">
+          <span class="agent-name">${esc(r.agent || r.reviewer || '?')}</span>
+          <span class="review-vote ${voteClass}">${fmtStatus(r.vote || r.recommendation || 'abstain')}</span>
+          ${r.timestamp ? `<span class="review-ts">${fmtDate(r.timestamp)}</span>` : ''}
+        </div>
+        <div class="review-body">${esc(r.reasoning || r.rationale || r.comment || '')}</div>
+        ${r.evidence_requests && r.evidence_requests.length
+          ? `<div style="font-size:11px;color:var(--amber);margin-top:6px">Evidence requested: ${r.evidence_requests.map(e=>esc(String(e))).join(', ')}</div>`
+          : ''}
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Falsification criteria from hypothesis data
+  const falsCriteria = parseFalsification(hyp);
+  const confCriteria = parseConfirmation(hyp);
+  if (falsCriteria.length || confCriteria.length) {
+    html += `<div class="detail-section">`;
+    html += `<div class="section-title">Scientific Criteria</div>`;
+    html += `<div class="criteria-cols">
+      <div class="criteria-col confirm">
+        <h4>Would Confirm</h4>
+        <ul>${confCriteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>
+      </div>
+      <div class="criteria-col falsify">
+        <h4>Would Falsify</h4>
+        <ul>${falsCriteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+    html += `</div>`;
+  }
+
+  // Revision history
+  if (detail && detail.hypothesis) {
+    const revCycle = detail.hypothesis.revision_cycle || 0;
+    if (revCycle > 0) {
+      html += `<div class="detail-section">`;
+      html += `<div class="section-title">Revision History</div>`;
+      html += `<div class="revision-history">
+        <div class="rev-entry">
+          <span class="rev-cycle">Cycle ${revCycle}</span>
+          <span>This hypothesis has been revised ${revCycle} time${revCycle !== 1 ? 's' : ''} by the council.</span>
+        </div>
+      </div>`;
+      html += `</div>`;
+    }
+  }
+
+  // Simulations (if any in evidence)
+  const simEvidence = evItems.filter(e => e.type === 'simulation' || (e.source && String(e.source).includes('sim')));
+  if (simEvidence.length) {
+    html += `<div class="detail-section">`;
+    html += `<div class="section-title">Simulation Findings</div>`;
+    simEvidence.forEach(ev => {
+      html += `<div class="sim-box">
+        <div class="sim-type">${esc(ev.sim_type || ev.type || 'Simulation')}</div>
+        ${esc(ev.text || ev.description || ev.summary || '')}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // If detail had no reviews or extra info, show raw status info
+  if (!detail) {
+    html += `<div class="detail-section">
+      <div style="font-size:12px;color:var(--muted);text-align:center;padding:12px 0;">
+        Could not load review detail from bridge. Is the bridge running?
+      </div>
+    </div>`;
+  }
+
+  panel.insertAdjacentHTML('beforeend', html);
+}
+
+
+/* ── Evidence parser ─────────────────────────────────────────── */
+
+function parseEvidence(raw) {
+  if (!raw) return [];
+  let parsed = raw;
+  if (typeof raw === 'string') {
+    try { parsed = JSON.parse(raw); } catch { return [{tier:'U', text: raw}]; }
+  }
+  if (Array.isArray(parsed)) return parsed.map(normalizeEvItem);
+  if (typeof parsed === 'object') {
+    // May be a dict like {tier_a: [...], tier_b: [...], ...}
+    const items = [];
+    for (const [k, v] of Object.entries(parsed)) {
+      if (Array.isArray(v)) {
+        const tier = k.replace('tier_','').toUpperCase();
+        v.forEach(ev => items.push({ ...normalizeEvItem(ev), tier }));
+      }
+    }
+    return items.length ? items : [{tier:'U', text: JSON.stringify(parsed).slice(0,120)}];
+  }
+  return [{tier:'U', text: String(parsed)}];
+}
+
+function normalizeEvItem(ev) {
+  if (typeof ev === 'string') return { tier: 'U', text: ev };
+  const tier = (ev.tier || ev.evidence_tier || 'U').toString().toUpperCase().replace('TIER_','').replace('TIER','');
+  return {
+    tier: ['A','B','C','D'].includes(tier) ? tier : 'U',
+    text: ev.summary || ev.description || ev.text || ev.title || JSON.stringify(ev).slice(0,120),
+    source: ev.source || ev.bundle_id || '',
+    date:   ev.date || ev.timestamp || ev.created_at || '',
+    type:   ev.type || '',
+    sim_type: ev.sim_type || '',
+    ...ev
+  };
+}
+
+function countTiers(items) {
+  const counts = {};
+  items.forEach(ev => {
+    const t = ev.tier || 'U';
+    counts[t] = (counts[t] || 0) + 1;
+  });
+  return counts;
+}
+
+function parseFalsification(hyp) {
+  const raw = hyp.falsification_criteria || hyp.falsification || '';
+  return parseStringList(raw);
+}
+
+function parseConfirmation(hyp) {
+  const raw = hyp.confirmation_criteria || hyp.confirmation || '';
+  return parseStringList(raw);
+}
+
+function parseStringList(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p.filter(Boolean).map(String);
+      return [String(raw)];
+    } catch {
+      // Split on newlines or semicolons
+      return raw.split(/[\n;]+/).map(s=>s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+
+function normalizeStatus(h) {
+  const s = (h.status || 'proposed').toLowerCase();
+  return s;
+}
+
+function fmtStatus(s) {
+  return (s || '').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function confColor_(conf) {
+  if (conf >= 0.75) return 'var(--green)';
+  if (conf >= 0.50) return 'var(--accent)';
+  if (conf >= 0.30) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function decisionColor(d) {
+  switch ((d||'').toLowerCase()) {
+    case 'approve':  case 'accepted': return 'var(--green)';
+    case 'reject':   case 'rejected': return 'var(--red)';
+    case 'hold':     case 'held':     return 'var(--purple)';
+    case 'needs_revision':            return 'var(--amber)';
+    default:                          return 'var(--text)';
+  }
+}
+
+function fmtDate(ts) {
+  try {
+    return new Date(ts).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+  } catch { return ts; }
+}
+
+function fmtTime(d) {
+  return d.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function setView(view) {
+  document.getElementById('loading-state').style.display = view === 'loading' ? '' : 'none';
+  document.getElementById('error-state').style.display   = view === 'error'   ? '' : 'none';
+  document.getElementById('empty-state').style.display   = view === 'empty'   ? '' : 'none';
+  document.getElementById('hyp-grid').style.display      = view === 'grid'    ? '' : 'none';
+}
+
+function setLive(alive) {
+  const el = document.getElementById('live-indicator');
+  el.textContent = alive ? 'Bridge live' : 'Bridge offline';
+  el.className   = 'live-dot' + (alive ? '' : ' offline');
+}
+
+
+/* ── Filter / search / sort wiring ───────────────────────────── */
+
+document.querySelectorAll('.filter-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.status;
+    render();
+  });
+});
+
+document.getElementById('sort-select').addEventListener('change', function() {
+  activeSort = this.value;
+  render();
+});
+
+let searchTimer = null;
+document.getElementById('search-box').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    activeSearch = this.value.trim();
+    render();
+  }, 200);
+});
+
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  detailCache = {};
+  expandedIds.clear();
+  loadHypotheses();
+});
+
+
+/* ── Keyboard shortcut ────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('search-box').focus();
+  }
+  if (e.key === 'Escape') {
+    const sb = document.getElementById('search-box');
+    if (document.activeElement === sb) {
+      sb.value = '';
+      activeSearch = '';
+      render();
+    }
+  }
+});
+
+
+/* ── Auto-refresh every 5 minutes ────────────────────────────── */
+setInterval(() => {
+  if (!expandedIds.size) {
+    detailCache = {};
+    loadHypotheses();
+  }
+}, 5 * 60 * 1000);
+
+
+/* ── Boot ─────────────────────────────────────────────────────── */
+loadHypotheses();
+</script>
+</body>
+</html>

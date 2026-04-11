@@ -1650,6 +1650,12 @@
             <button id="add-hypothesis-btn">+ New Hypothesis</button>
           </div>
         </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+          <input id="hyp-search-filter" type="text" placeholder="🔍 Search hypotheses by title, description, or tag…"
+            oninput="renderHypotheses()"
+            style="flex:1;min-width:220px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:0.82rem;outline:none;">
+          <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">Showing <strong id="hyp-filter-count">0</strong></span>
+        </div>
         <div id="hypotheses-grid"></div>
 
         <!-- AUTO-GENERATED HYPOTHESES -->
@@ -2301,11 +2307,11 @@
       },
       {
         title: "The Jailer Hypothesis",
-        desc: "Something caused the ancient feeding event to stop. Complex life emerged in the quiet aftermath. The 'jailer' that keeps Sgr A* dormant could be: (1) physics \u2014 magnetic field geometry and angular momentum barriers, (2) advanced life \u2014 engineering on galactic scales, or (3) us, retroactively, through observation.",
-        evidence: "Temporal correlation: last major accretion ~2\u20134 Myr ago coincides with Homo evolution timeline. Magnetic flux threading models (MAD state) show self-regulating accretion. No direct evidence for options 2 or 3.",
+        desc: "Sgr A* isn't just sitting there \u2014 it's actively shaping the orbits of thousands of stars within the central parsec through its Gravitational Sphere of Influence (r_h \u2248 1.79 pc). It's not a passive anchor. Stars in the central parsec are permanently captured via the Hills mechanism and show measurable general-relativistic orbital deviations. S2 exhibits Schwarzschild precession of ~12 arcmin/orbit (confirmed GRAVITY 2020), distinguishing this dynamical zone from simple Keplerian motion.",
+        evidence: "S2 orbit mapping (Gillessen+ 2017, GRAVITY 2018). Schwarzschild precession of S2: 12.1 \u00b1 0.3 arcmin/orbit (GRAVITY Collaboration 2020). Hills mechanism capture radius ~8.85 AU for Solar-type binaries. ~140 S-stars bound within r_h \u2248 1.79 pc. Simulation bundle: orbital_confinement engine (simulation_worker.py).",
         status: "active",
-        tags: ["Sgr A*", "consciousness", "galactic center"],
-        source: "Danny + Claude, March 2026, Airport + Aguadilla",
+        tags: ["Sgr A*", "stellar dynamics", "S-stars", "gravity", "general relativity"],
+        source: "Danny + Claude, March 2026 \u2014 revised with GR simulation Apr 2026",
         date: "2026-03-07"
       },
       {
@@ -2445,11 +2451,19 @@
       }
     ];
 
-    // Seed on first load (no existing hypotheses in localStorage)
-    if (state.hypotheses.length < FOUNDING_HYPOTHESES.length) {
-      state.hypotheses = FOUNDING_HYPOTHESES;
-      localStorage.setItem('journal_hypotheses', JSON.stringify(state.hypotheses));
-      console.log('[Manatuabon] Seeded/Restored all 13 founding hypotheses.');
+    // Always ensure every founding hypothesis is present — merge missing ones in by title.
+    // This survives localStorage growth (auto-hypotheses accumulating) without wiping user data.
+    {
+      const existingTitles = new Set(state.hypotheses.map(h => h.title));
+      const missing = FOUNDING_HYPOTHESES.filter(h => !existingTitles.has(h.title));
+      if (missing.length > 0) {
+        // Prepend missing founding hypotheses so they appear first in the grid
+        state.hypotheses = [...missing, ...state.hypotheses];
+        localStorage.setItem('journal_hypotheses', JSON.stringify(state.hypotheses));
+        console.log(`[Manatuabon] Restored ${missing.length} missing founding hypothesis/hypotheses.`);
+      } else {
+        console.log('[Manatuabon] All founding hypotheses present.');
+      }
     }
     // Load Persistent Memory
     async function loadMemory() {
@@ -4464,7 +4478,22 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
       grid.innerHTML = '';
       sbg.innerHTML = '';
 
-      state.hypotheses.forEach((h, idx) => {
+      const filterInput = document.getElementById('hyp-search-filter');
+      const filterVal = filterInput ? filterInput.value.trim().toLowerCase() : '';
+      const filtered = filterVal
+        ? state.hypotheses.filter(h =>
+            (h.title || '').toLowerCase().includes(filterVal) ||
+            (h.desc || '').toLowerCase().includes(filterVal) ||
+            (h.tags || []).some(t => t.toLowerCase().includes(filterVal))
+          )
+        : state.hypotheses;
+
+      document.getElementById('stat-hypotheses').innerText = state.hypotheses.length;
+      const countLabel = document.getElementById('hyp-filter-count');
+      if (countLabel) countLabel.textContent = filterVal ? `${filtered.length} of ${state.hypotheses.length}` : state.hypotheses.length;
+
+      filtered.forEach((h, idx) => {
+        const realIdx = state.hypotheses.indexOf(h);
         // Main Grid
         const card = document.createElement('div');
         card.className = 'hypothesis-card';
@@ -4478,8 +4507,8 @@ Keep answers incredibly sharp, deeply factual, format beautifully using markdown
           <div class="card-footer">
             <div class="card-date">${h.date}</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn-secondary" style="padding:4px 8px;font-size:0.65rem;" onclick="analyzeHypothesis(${idx})">🤖 Analyze</button>
-              <button class="btn-secondary" style="padding:4px 8px;font-size:0.65rem;" onclick="editHypothesis(${idx})">Edit</button>
+              <button class="btn-secondary" style="padding:4px 8px;font-size:0.65rem;" onclick="analyzeHypothesis(${realIdx})">🤖 Analyze</button>
+              <button class="btn-secondary" style="padding:4px 8px;font-size:0.65rem;" onclick="editHypothesis(${realIdx})">Edit</button>
             </div>
           </div>
         `;

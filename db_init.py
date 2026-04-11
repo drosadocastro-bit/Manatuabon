@@ -392,14 +392,24 @@ def migrate_data(conn, json_path: str | Path = JSON_PATH):
         ))
         
     # Migrate Simulation Queue
+    # simulation_queue entries may be plain strings (legacy) or dicts (structured)
     sims = data.get("simulation_queue", [])
     for s in sims:
-        c.execute('''
-            INSERT OR IGNORE INTO simulations (id, queued_at, parameters, status)
-            VALUES (?, ?, ?, ?)
-        ''', (
-            s.get("sim_id"), s.get("requested_at"), json.dumps(s.get("parameters", {})), s.get("status", "pending")
-        ))
+        if isinstance(s, str):
+            # Legacy format: bare string is the simulation name, no id/params yet
+            c.execute('''
+                INSERT OR IGNORE INTO simulations (id, queued_at, parameters, status)
+                VALUES (?, ?, ?, ?)
+            ''', (
+                None, None, json.dumps({"name": s}), "pending"
+            ))
+        else:
+            c.execute('''
+                INSERT OR IGNORE INTO simulations (id, queued_at, parameters, status)
+                VALUES (?, ?, ?, ?)
+            ''', (
+                s.get("sim_id"), s.get("requested_at"), json.dumps(s.get("parameters", {})), s.get("status", "pending")
+            ))
 
     conn.commit()
     print("✅ Migration Complete! manatuabon.db is ready.")
