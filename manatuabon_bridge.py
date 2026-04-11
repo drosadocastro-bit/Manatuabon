@@ -529,7 +529,7 @@ async def handle_reject_hypothesis(request):
         if not hyp_id:
             return json_response({"error": "Missing hyp_id"}, status=400)
 
-        updated = _memory.set_auto_hypothesis_status(hyp_id, "rejected")
+        updated = _memory.set_auto_hypothesis_status(hyp_id, "rejected_auto")
         if not updated:
             return json_response({"error": "Hypothesis not found"}, status=404)
 
@@ -697,7 +697,8 @@ async def handle_cloud_query(request):
 async def handle_get_chat(request):
     """GET /api/chat → fetch recent chat history."""
     try:
-        history = _memory.get_chat_history(limit=50)
+        limit = safe_limit(request.query.get("limit", "50"), default=50, max_limit=200)
+        history = _memory.get_chat_history(limit=limit)
         return json_response(history)
     except Exception as e:
         log.error("get-chat error: %s", e)
@@ -707,8 +708,14 @@ async def handle_post_chat(request):
     """POST /api/chat → push a new message to SQL history."""
     try:
         body = await request.json()
-        _memory.add_chat_message(body["role"], body["content"], body.get("metadata"))
+        role = (body.get("role") or "").strip()
+        content = (body.get("content") or "").strip()
+        if not role or not content:
+            return json_response({"error": "Missing role or content"}, status=400)
+        _memory.add_chat_message(role, content, body.get("metadata"))
         return json_response({"status": "ok"})
+    except ValueError as e:
+        return json_response({"error": str(e)}, status=400)
     except Exception as e:
         log.error("post-chat error: %s", e)
         return json_response({"error": "Internal server error"}, status=500)

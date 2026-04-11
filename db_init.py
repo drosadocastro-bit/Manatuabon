@@ -299,6 +299,21 @@ def init_db(db_path: str | Path = DB_PATH):
     c.execute("UPDATE mast_queue SET status='running' WHERE status='processing'")
     c.execute("UPDATE mast_queue SET status='done' WHERE status='completed'")
     c.execute("UPDATE radio_queue SET status='done' WHERE status='completed'")
+    c.execute("UPDATE simulations SET status='done' WHERE status='completed'")
+
+    # Align radio_queue schema with mast_queue (add retry columns)
+    radio_cols = {row[1] for row in c.execute("PRAGMA table_info(radio_queue)").fetchall()}
+    if "attempts" not in radio_cols:
+        c.execute("ALTER TABLE radio_queue ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
+    if "last_run" not in radio_cols:
+        c.execute("ALTER TABLE radio_queue ADD COLUMN last_run TEXT")
+
+    # Align simulations schema (add retry columns)
+    sim_cols = {row[1] for row in c.execute("PRAGMA table_info(simulations)").fetchall()}
+    if "attempts" not in sim_cols:
+        c.execute("ALTER TABLE simulations ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
+    if "last_run" not in sim_cols:
+        c.execute("ALTER TABLE simulations ADD COLUMN last_run TEXT")
 
     hypothesis_columns = {row[1] for row in c.execute("PRAGMA table_info(hypotheses)").fetchall()}
     hypothesis_migrations = {

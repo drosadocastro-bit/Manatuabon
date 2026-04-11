@@ -211,7 +211,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     check("Bundle file created in inbox", len(bundles) == 1, f"found {len(bundles)}")
 
     if bundles:
-        with open(bundles[0]) as f:
+        with open(bundles[0], encoding="utf-8") as f:
             b = json.load(f)
         check("Written bundle is valid JSON with correct schema",
               b.get("manatuabon_schema") == "structured_ingest_v1")

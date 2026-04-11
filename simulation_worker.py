@@ -719,7 +719,7 @@ class SimulationWorker:
         try:
             with self._conn() as conn:
                 conn.execute(
-                    "UPDATE simulations SET status='completed', parameters=? WHERE id=?",
+                    "UPDATE simulations SET status='done', parameters=? WHERE id=?",
                     (json.dumps(params), task_id),
                 )
                 conn.commit()

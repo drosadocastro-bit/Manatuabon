@@ -1118,9 +1118,21 @@ class MemoryManager:
                     log.info("SQL %s Radio Target Queued: %s", tgt_type, tgt)
             c.commit()
 
+    _CHAT_ROLES = {"user", "assistant", "system"}
+    _CHAT_CONTENT_MAX = 8000
+
     def add_chat_message(self, role: str, content: str, metadata: dict | None = None):
+        if role not in self._CHAT_ROLES:
+            raise ValueError(f"Invalid chat role: {role!r}")
+        content = (content or "")[:self._CHAT_CONTENT_MAX]
         self._ensure_tables()
         with self._get_conn() as c:
+            # Dedup: skip if the last message has identical role+content (flush retry guard)
+            last = c.execute(
+                "SELECT role, content FROM chat_history ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            if last and last["role"] == role and last["content"] == content:
+                return
             c.execute(
                 "INSERT INTO chat_history (timestamp, role, content, metadata) VALUES (?, ?, ?, ?)",
                 (datetime.now().isoformat(), role, content, json.dumps(metadata or {}, ensure_ascii=False)),
