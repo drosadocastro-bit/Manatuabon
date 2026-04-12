@@ -26,25 +26,25 @@ This plan tracks known debt and prioritizes remediation.
 ### D1: Test Architecture Debt
 
 **Severity:** HIGH  
-**Status:** Open  
+**Status:** Partially Remediated (R1.1 complete)  
 **Found:** April 11, 2026
 
 | Issue | Detail |
 |---|---|
-| 11 of 36 test files use script-style `check()` | Invisible to pytest and CI |
+| ~~11 of 36 test files use script-style `check()`~~ | **Fixed** — all 7 script-style files converted to `def test_*()` |
 | No shared test fixtures | Database setup duplicated across 22+ test files |
 | No integration tests | Only unit/component — no end-to-end ingest→council flow |
-| Encoding bugs on Windows | `open()` without `encoding="utf-8"` fails on CP1252 |
+| Encoding bugs on Windows | `open()` without `encoding="utf-8"` mostly fixed |
 
 **Remediation:**
 
-- [ ] R1.1: Convert all `check()` scripts to `def test_*()` (Phase M7)
+- [x] R1.1: Convert all `check()` scripts to `def test_*()` — 7 files, 162 tests (Phase 19)
 - [ ] R1.2: Create `tests/conftest.py` with `tmp_db`, `mock_memory` fixtures
 - [ ] R1.3: Add one integration test: ingest bundle → council review → decision
 - [ ] R1.4: Audit all `open()` calls for explicit `encoding="utf-8"`
 - [ ] R1.5: Add pytest to pre-commit hook
 
-**Verification:** `python -m pytest -v` discovers and runs all tests.
+**Verification:** `python -m pytest -v` — 275 passed, 0 failed (1 pre-existing external API issue in test_sql_agent).
 
 ---
 

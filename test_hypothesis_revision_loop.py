@@ -3,10 +3,12 @@ Tests for hypothesis_revision_loop.py — all offline, no bridge, no external AP
 """
 
 import json
+import sqlite3
 import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,26 +29,22 @@ from hypothesis_revision_loop import (
     COOLDOWN_MINUTES,
 )
 
-passed = 0
-failed = 0
+
+# -- Fixtures ------------------------------------------------------------------
 
 
-def check(label: str, condition: bool, detail: str = ""):
-    global passed, failed
-    if condition:
-        print(f"  ✓ {label}")
-        passed += 1
-    else:
-        print(f"  ✗ {label}" + (f" — {detail}" if detail else ""))
-        failed += 1
+def _past(minutes: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
 
 
-# ── Fixture helpers ────────────────────────────────────────────────────────────
+def _future(minutes: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
 
-def make_db(tmp: Path):
-    """Create a minimal in-memory-style SQLite DB in tmp for testing."""
-    import sqlite3
-    db_path = tmp / "test.db"
+
+@pytest.fixture()
+def rev_db(tmp_path):
+    """Create a minimal SQLite DB for revision-loop testing."""
+    db_path = tmp_path / "test.db"
     conn = sqlite3.connect(str(db_path), timeout=10)
     conn.row_factory = sqlite3.Row
 
@@ -90,371 +88,426 @@ def make_db(tmp: Path):
     """)
     conn.commit()
     ensure_tracking_table(conn)
-    return db_path, conn
+    conn.close()
+    return db_path
 
 
-def past(minutes: int) -> str:
-    return (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
-
-
-def future(minutes: int) -> str:
-    return (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
-
-
-def seed_hypothesis(conn, hid="H3", decision="needs_revision", decision_minutes_ago=60):
+def _seed_hypothesis(db_path, hid="H3", decision="needs_revision", decision_minutes_ago=60):
+    conn = sqlite3.connect(str(db_path), timeout=10)
+    conn.row_factory = sqlite3.Row
     conn.execute(
         "INSERT OR IGNORE INTO hypotheses (id, title, description, evidence, status) VALUES (?, ?, ?, ?, ?)",
-        (hid, f"Test Hypothesis {hid}", f"Desc for {hid}", "Original evidence.", "active")
+        (hid, f"Test Hypothesis {hid}", f"Desc for {hid}", "Original evidence.", "active"),
     )
     conn.execute(
         "INSERT INTO hypothesis_decisions (hypothesis_id, decision, final_score, timestamp) VALUES (?, ?, ?, ?)",
-        (hid, decision, 0.62, past(decision_minutes_ago))
+        (hid, decision, 0.62, _past(decision_minutes_ago)),
     )
     conn.commit()
-
-
-# ── [1] ensure_tracking_table ──────────────────────────────────────────────────
-
-print("\n[1] ensure_tracking_table")
-with tempfile.TemporaryDirectory() as tmp:
-    db_path, conn = make_db(Path(tmp))
-    # Called twice to confirm idempotency
-    ensure_tracking_table(conn)
-    ensure_tracking_table(conn)
-    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
-    check("revision_tracking table created", "revision_tracking" in tables)
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(revision_tracking)").fetchall()}
-    for col in ("hypothesis_id", "revision_cycle", "last_attempted", "last_status", "notes"):
-        check(f"column '{col}' exists", col in cols)
     conn.close()
 
 
-# ── [2] get_needs_revision_candidates ─────────────────────────────────────────
-
-print("\n[2] get_needs_revision_candidates")
-with tempfile.TemporaryDirectory() as tmp:
-    db_path, conn = make_db(Path(tmp))
-
-    # H3: needs_revision, cooldown elapsed (60 min ago) → should appear
-    seed_hypothesis(conn, "H3", "needs_revision", decision_minutes_ago=60)
-    # H4: accepted → should NOT appear
-    seed_hypothesis(conn, "H4", "accepted", decision_minutes_ago=60)
-    # H5: needs_revision but cooldown NOT elapsed (5 min ago) → should NOT appear
-    seed_hypothesis(conn, "H5", "needs_revision", decision_minutes_ago=5)
-    # H6: needs_revision, but MAX cycles already reached
-    seed_hypothesis(conn, "H6", "needs_revision", decision_minutes_ago=60)
-    conn.execute(
-        "INSERT INTO revision_tracking (hypothesis_id, revision_cycle, last_attempted) VALUES (?, ?, ?)",
-        ("H6", MAX_REVISION_CYCLES, past(60))
-    )
-    conn.commit()
-
-    candidates = get_needs_revision_candidates(conn)
-    ids = {c["id"] for c in candidates}
-
-    check("H3 (needs_revision, cooldown elapsed) is candidate", "H3" in ids)
-    check("H4 (accepted) is NOT a candidate", "H4" not in ids)
-    check("H5 (within cooldown window) is NOT a candidate", "H5" not in ids)
-    check("H6 (max cycles reached) is NOT a candidate", "H6" not in ids)
-    check("candidate has required keys",
-          all(k in candidates[0] for k in ("id", "title", "revision_cycle", "last_decision_at"))
-          if candidates else False)
-    conn.close()
+def _open(db_path):
+    conn = sqlite3.connect(str(db_path), timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-# ── [3] get_new_memories ──────────────────────────────────────────────────────
-
-print("\n[3] get_new_memories")
-with tempfile.TemporaryDirectory() as tmp:
-    db_path, conn = make_db(Path(tmp))
-    now_str = datetime.now(timezone.utc).isoformat()
-    old_str = past(120)
-
-    # Memory after cutoff, tagged to H3 → should appear
-    conn.execute(
-        "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
-        (now_str, "Sgr A* S2 orbit confirms GR precession.", 5, "H3")
-    )
-    # Memory before cutoff → should NOT appear
-    conn.execute(
-        "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
-        (old_str, "Old memory that predates last decision.", 5, "H3")
-    )
-    # Memory for H7, not H3 → should NOT appear
-    conn.execute(
-        "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
-        (now_str, "Unrelated H7 memory.", 5, "H7")
-    )
-    conn.commit()
-
-    mems = get_new_memories(conn, "H3", since=past(60))
-    check("Returns 1 new memory for H3", len(mems) == 1, f"got {len(mems)}")
-    check("Memory has expected content", "S2" in (mems[0]["content"] if mems else ""))
-    check("Empty result for H7 since recent timestamp",
-          len(get_new_memories(conn, "H7", since=future(1))) == 0)
-    check("Returns all H3 memories when since=None (epoch)",
-          len(get_new_memories(conn, "H3", since=None)) == 2)
-    conn.close()
+# -- [1] ensure_tracking_table ------------------------------------------------
 
 
-# ── [4] get_reflection_guidance ───────────────────────────────────────────────
+class TestEnsureTrackingTable:
+    def test_table_created(self, rev_db):
+        conn = _open(rev_db)
+        ensure_tracking_table(conn)  # idempotent
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "revision_tracking" in tables
+        conn.close()
 
-print("\n[4] get_reflection_guidance")
-with tempfile.TemporaryDirectory() as tmp:
-    db_path, conn = make_db(Path(tmp))
-
-    details = {
-        "concrete_revisions": ["Tighten the Hills mechanism argument", "Cite GRAVITY 2020"],
-        "blockers": ["Missing direct Tier A measurement"],
-        "evidence_requests": ["Request VLBI proper motion data"],
-    }
-    conn.execute(
-        "INSERT INTO hypothesis_reviews "
-        "(hypothesis_id, agent_name, verdict, reasoning, objections, review_details, timestamp) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ("H3", "reflection", "needs_revision", "The argument needs tightening.",
-         "Speculative Hills radius", json.dumps(details), datetime.now(timezone.utc).isoformat())
-    )
-    conn.commit()
-
-    g = get_reflection_guidance(conn, "H3")
-    check("concrete_revisions list returned", isinstance(g["concrete_revisions"], list))
-    check("2 concrete revisions", len(g["concrete_revisions"]) == 2, f"got {len(g['concrete_revisions'])}")
-    check("blockers list returned", isinstance(g["blockers"], list))
-    check("evidence_requests returned", len(g["evidence_requests"]) == 1)
-    check("reasoning non-empty", len(g["reasoning"]) > 0)
-    check("empty dict for unknown hypothesis", get_reflection_guidance(conn, "H999") == {})
-    conn.close()
+    def test_required_columns_exist(self, rev_db):
+        conn = _open(rev_db)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(revision_tracking)").fetchall()}
+        for col in ("hypothesis_id", "revision_cycle", "last_attempted", "last_status", "notes"):
+            assert col in cols, f"missing column: {col}"
+        conn.close()
 
 
-# ── [5] scan_inbox_bundles ────────────────────────────────────────────────────
+# -- [2] get_needs_revision_candidates ----------------------------------------
 
-print("\n[5] scan_inbox_bundles")
-with tempfile.TemporaryDirectory() as tmp:
-    tmp = Path(tmp)
-    inbox = tmp / "inbox"
-    inbox.mkdir()
 
-    # Bundle for H3 → should be found
-    bundle_h3 = {
-        "manatuabon_schema": "structured_ingest_v1",
-        "payload_type": "simulation/orbital_confinement",
-        "supports_hypothesis": "H3",
-        "summary": "S2 Schwarzschild precession 11.91 arcmin/orbit, consistent with GRAVITY 2020.",
-        "significance": 0.85,
-        "structured_evidence": {
-            "testable_predictions": [
-                {"prediction": "GRAVITY instrument should detect S2 precession in next orbit"},
-                {"prediction": "Hills radius capture rate measurable with deep IR survey"},
-            ]
+class TestGetNeedsRevisionCandidates:
+    def test_needs_revision_cooldown_elapsed(self, rev_db):
+        _seed_hypothesis(rev_db, "H3", "needs_revision", decision_minutes_ago=60)
+        conn = _open(rev_db)
+        ids = {c["id"] for c in get_needs_revision_candidates(conn)}
+        assert "H3" in ids
+        conn.close()
+
+    def test_accepted_not_candidate(self, rev_db):
+        _seed_hypothesis(rev_db, "H4", "accepted", decision_minutes_ago=60)
+        conn = _open(rev_db)
+        ids = {c["id"] for c in get_needs_revision_candidates(conn)}
+        assert "H4" not in ids
+        conn.close()
+
+    def test_within_cooldown_not_candidate(self, rev_db):
+        _seed_hypothesis(rev_db, "H5", "needs_revision", decision_minutes_ago=5)
+        conn = _open(rev_db)
+        ids = {c["id"] for c in get_needs_revision_candidates(conn)}
+        assert "H5" not in ids
+        conn.close()
+
+    def test_max_cycles_reached_not_candidate(self, rev_db):
+        _seed_hypothesis(rev_db, "H6", "needs_revision", decision_minutes_ago=60)
+        conn = _open(rev_db)
+        conn.execute(
+            "INSERT INTO revision_tracking (hypothesis_id, revision_cycle, last_attempted) VALUES (?, ?, ?)",
+            ("H6", MAX_REVISION_CYCLES, _past(60)),
+        )
+        conn.commit()
+        ids = {c["id"] for c in get_needs_revision_candidates(conn)}
+        assert "H6" not in ids
+        conn.close()
+
+    def test_candidate_has_required_keys(self, rev_db):
+        _seed_hypothesis(rev_db, "H3", "needs_revision", decision_minutes_ago=60)
+        conn = _open(rev_db)
+        candidates = get_needs_revision_candidates(conn)
+        assert candidates
+        assert all(k in candidates[0] for k in ("id", "title", "revision_cycle", "last_decision_at"))
+        conn.close()
+
+
+# -- [3] get_new_memories ------------------------------------------------------
+
+
+class TestGetNewMemories:
+    def test_returns_recent_memory_for_hypothesis(self, rev_db):
+        conn = _open(rev_db)
+        now_str = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
+            (now_str, "Sgr A* S2 orbit confirms GR precession.", 5, "H3"),
+        )
+        conn.commit()
+        mems = get_new_memories(conn, "H3", since=_past(60))
+        assert len(mems) == 1
+        assert "S2" in mems[0]["content"]
+        conn.close()
+
+    def test_old_memory_excluded(self, rev_db):
+        conn = _open(rev_db)
+        conn.execute(
+            "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
+            (_past(120), "Old memory.", 5, "H3"),
+        )
+        conn.commit()
+        mems = get_new_memories(conn, "H3", since=_past(60))
+        assert len(mems) == 0
+        conn.close()
+
+    def test_different_hypothesis_excluded(self, rev_db):
+        conn = _open(rev_db)
+        now_str = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
+            (now_str, "Unrelated H7 memory.", 5, "H7"),
+        )
+        conn.commit()
+        mems = get_new_memories(conn, "H3", since=_past(60))
+        assert len(mems) == 0
+        conn.close()
+
+    def test_since_none_returns_all(self, rev_db):
+        conn = _open(rev_db)
+        for ts in [datetime.now(timezone.utc).isoformat(), _past(120)]:
+            conn.execute(
+                "INSERT INTO memories (timestamp, content, significance, supports_hypothesis) VALUES (?, ?, ?, ?)",
+                (ts, f"Mem at {ts}", 5, "H3"),
+            )
+        conn.commit()
+        mems = get_new_memories(conn, "H3", since=None)
+        assert len(mems) == 2
+        conn.close()
+
+
+# -- [4] get_reflection_guidance -----------------------------------------------
+
+
+class TestGetReflectionGuidance:
+    def _seed_reflection(self, db_path):
+        conn = _open(db_path)
+        details = {
+            "concrete_revisions": ["Tighten the Hills mechanism argument", "Cite GRAVITY 2020"],
+            "blockers": ["Missing direct Tier A measurement"],
+            "evidence_requests": ["Request VLBI proper motion data"],
         }
-    }
-    (inbox / "simulation_bundle_orbital_confinement_H3_001.json").write_text(json.dumps(bundle_h3))
+        conn.execute(
+            "INSERT INTO hypothesis_reviews "
+            "(hypothesis_id, agent_name, verdict, reasoning, objections, review_details, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("H3", "reflection", "needs_revision", "The argument needs tightening.",
+             "Speculative Hills radius", json.dumps(details), datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        conn.close()
 
-    # Bundle for H7 → should NOT match H3
-    bundle_h7 = {
-        "manatuabon_schema": "structured_ingest_v1",
-        "payload_type": "simulation/accretion_physics",
-        "supports_hypothesis": "H7",
-        "summary": "Bondi radius 0.04 arcsec for Sgr A*",
-        "significance": 0.7,
-        "structured_evidence": {}
-    }
-    (inbox / "simulation_bundle_accretion_H7_001.json").write_text(json.dumps(bundle_h7))
+    def test_concrete_revisions_returned(self, rev_db):
+        self._seed_reflection(rev_db)
+        conn = _open(rev_db)
+        g = get_reflection_guidance(conn, "H3")
+        assert isinstance(g["concrete_revisions"], list)
+        assert len(g["concrete_revisions"]) == 2
+        conn.close()
 
-    # Malformed JSON → should be silently skipped
-    (inbox / "simulation_bundle_bad_001.json").write_text("{{BROKEN")
+    def test_blockers_and_evidence_requests(self, rev_db):
+        self._seed_reflection(rev_db)
+        conn = _open(rev_db)
+        g = get_reflection_guidance(conn, "H3")
+        assert isinstance(g["blockers"], list)
+        assert len(g["evidence_requests"]) == 1
+        assert len(g["reasoning"]) > 0
+        conn.close()
 
-    bundles = scan_inbox_bundles(inbox, "H3")
-    check("Finds 1 bundle for H3", len(bundles) == 1, f"found {len(bundles)}")
-    check("Bundle has summary", "S2" in (bundles[0]["summary"] if bundles else ""))
-    check("Bundle has testable_predictions", len(bundles[0].get("testable_predictions", [])) == 2
-          if bundles else False)
-    check("H7 bundle NOT included in H3 results", "H7" not in str(bundles))
-    check("Empty inbox returns empty list", len(scan_inbox_bundles(tmp / "nonexistent", "H3")) == 0)
-
-
-# ── [6] build_evidence_addendum ───────────────────────────────────────────────
-
-print("\n[6] build_evidence_addendum")
-orig = "S2 orbit data from Gillessen+ 2017."
-memories = [
-    {"content": "GRAVITY 2020 confirms 12.1 arcmin precession.", "timestamp": "2026-04-10T00:00:00Z"},
-    {"content": "Hills mechanism capture at 8.85 AU.", "timestamp": "2026-04-09T00:00:00Z"},
-]
-sim_bundles = [
-    {
-        "payload_type": "simulation/orbital_confinement",
-        "summary": "r_h = 1.79 pc, precession 11.91 arcmin/orbit",
-        "significance": 0.85,
-        "testable_predictions": [{"prediction": "Detect S2 in GRAVITY next orbit"}],
-    }
-]
-reflection = {
-    "concrete_revisions": ["Cite Schwarzschild precession formula", "Add Hills mechanism calculation"],
-    "blockers": [],
-}
-
-addendum = build_evidence_addendum(orig, memories, sim_bundles, reflection, revision_cycle=0)
-
-check("Original evidence preserved", orig in addendum)
-check("Revision marker present", "[Revision 1" in addendum)
-check("Reflection revision included", "Schwarzschild" in addendum)
-check("Simulation evidence included", "1.79 pc" in addendum)
-check("Memory snippet included", "GRAVITY" in addendum)
-check("Addendum is prepended (revision before original)", addendum.index("[Revision") < addendum.index(orig))
-
-# Edge case: no new evidence
-bare = build_evidence_addendum(orig, [], [], {}, revision_cycle=2)
-check("Bare revision still has marker", "[Revision 3" in bare)
-check("Original still present in bare", orig in bare)
+    def test_unknown_hypothesis_returns_empty(self, rev_db):
+        conn = _open(rev_db)
+        assert get_reflection_guidance(conn, "H999") == {}
+        conn.close()
 
 
-# ── [7] update_tracking / get_revision_cycle ──────────────────────────────────
-
-print("\n[7] update_tracking & get_revision_cycle")
-with tempfile.TemporaryDirectory() as tmp:
-    db_path, conn = make_db(Path(tmp))
-
-    check("Initial cycle = 0", get_revision_cycle(conn, "H3") == 0)
-    update_tracking(conn, "H3", "submitted", "first pass")
-    check("Cycle = 1 after first update", get_revision_cycle(conn, "H3") == 1)
-    update_tracking(conn, "H3", "submitted", "second pass")
-    check("Cycle = 2 after second update", get_revision_cycle(conn, "H3") == 2)
-    update_tracking(conn, "H3", "error", "bridge down")
-    check("Cycle = 3 after third update", get_revision_cycle(conn, "H3") == 3)
-
-    row = conn.execute("SELECT * FROM revision_tracking WHERE hypothesis_id = 'H3'").fetchone()
-    check("last_status updated to 'error'", row["last_status"] == "error")
-    check("last_attempted is recent ISO timestamp", "T" in (row["last_attempted"] or ""))
-    conn.close()
+# -- [5] scan_inbox_bundles ----------------------------------------------------
 
 
-# ── [8] patch_hypothesis_evidence ─────────────────────────────────────────────
+class TestScanInboxBundles:
+    def test_finds_matching_bundle(self, tmp_path):
+        inbox = tmp_path / "inbox"
+        inbox.mkdir()
+        bundle_h3 = {
+            "manatuabon_schema": "structured_ingest_v1",
+            "payload_type": "simulation/orbital_confinement",
+            "supports_hypothesis": "H3",
+            "summary": "S2 Schwarzschild precession 11.91 arcmin/orbit.",
+            "significance": 0.85,
+            "structured_evidence": {
+                "testable_predictions": [
+                    {"prediction": "GRAVITY should detect S2 precession"},
+                    {"prediction": "Hills radius capture rate measurable"},
+                ]
+            },
+        }
+        (inbox / "simulation_bundle_orbital_confinement_H3_001.json").write_text(
+            json.dumps(bundle_h3), encoding="utf-8"
+        )
+        bundles = scan_inbox_bundles(inbox, "H3")
+        assert len(bundles) == 1
+        assert "S2" in bundles[0]["summary"]
+        assert len(bundles[0].get("testable_predictions", [])) == 2
 
-print("\n[8] patch_hypothesis_evidence")
-with tempfile.TemporaryDirectory() as tmp:
-    db_path, conn = make_db(Path(tmp))
-    conn.execute(
-        "INSERT INTO hypotheses (id, title, description, evidence, status) VALUES (?, ?, ?, ?, ?)",
-        ("H3", "Jailer Hypothesis", "desc", "Old evidence.", "active")
-    )
-    conn.commit()
+    def test_other_hypothesis_excluded(self, tmp_path):
+        inbox = tmp_path / "inbox"
+        inbox.mkdir()
+        bundle_h7 = {
+            "manatuabon_schema": "structured_ingest_v1",
+            "supports_hypothesis": "H7",
+            "summary": "unrelated",
+            "significance": 0.7,
+            "structured_evidence": {},
+        }
+        (inbox / "sim_h7.json").write_text(json.dumps(bundle_h7), encoding="utf-8")
+        bundles = scan_inbox_bundles(inbox, "H3")
+        assert len(bundles) == 0
 
-    patch_hypothesis_evidence(conn, "H3", "Revised evidence with new data.")
-    row = conn.execute("SELECT evidence, updated_at FROM hypotheses WHERE id='H3'").fetchone()
-    check("Evidence field updated", "Revised evidence" in (row["evidence"] or ""))
-    check("updated_at set", row["updated_at"] is not None and "T" in row["updated_at"])
-    conn.close()
+    def test_malformed_json_skipped(self, tmp_path):
+        inbox = tmp_path / "inbox"
+        inbox.mkdir()
+        (inbox / "bad.json").write_text("{{BROKEN", encoding="utf-8")
+        assert scan_inbox_bundles(inbox, "H3") == []
+
+    def test_nonexistent_inbox_returns_empty(self, tmp_path):
+        assert scan_inbox_bundles(tmp_path / "nonexistent", "H3") == []
 
 
-# ── [9] submit_to_bridge (unreachable) ────────────────────────────────────────
-
-print("\n[9] submit_to_bridge (bridge unreachable)")
-# Use timeout=2 so the test doesn't hang 30 seconds on a refused connection
-result = submit_to_bridge("H3", bridge_url="http://127.0.0.1:19999/api/council/reprocess", timeout=2)
-check("Returns error dict when bridge unreachable", "error" in result)
-check("Error message is non-empty string", isinstance(result["error"], str) and len(result["error"]) > 0)
+# -- [6] build_evidence_addendum -----------------------------------------------
 
 
-# ── [10] HypothesisRevisionLoop.run_once (dry_run) ────────────────────────────
+class TestBuildEvidenceAddendum:
+    def setup_method(self):
+        self.orig = "S2 orbit data from Gillessen+ 2017."
+        self.memories = [
+            {"content": "GRAVITY 2020 confirms 12.1 arcmin precession.", "timestamp": "2026-04-10T00:00:00Z"},
+            {"content": "Hills mechanism capture at 8.85 AU.", "timestamp": "2026-04-09T00:00:00Z"},
+        ]
+        self.sim_bundles = [
+            {
+                "payload_type": "simulation/orbital_confinement",
+                "summary": "r_h = 1.79 pc, precession 11.91 arcmin/orbit",
+                "significance": 0.85,
+                "testable_predictions": [{"prediction": "Detect S2 in GRAVITY next orbit"}],
+            }
+        ]
+        self.reflection = {
+            "concrete_revisions": ["Cite Schwarzschild precession formula", "Add Hills mechanism calculation"],
+            "blockers": [],
+        }
 
-print("\n[10] HypothesisRevisionLoop.run_once (dry_run=True)")
-with tempfile.TemporaryDirectory() as tmp:
-    tmp = Path(tmp)
-    db_path, conn = make_db(tmp)
+    def test_original_evidence_preserved(self):
+        a = build_evidence_addendum(self.orig, self.memories, self.sim_bundles, self.reflection, 0)
+        assert self.orig in a
 
-    # Seed a qualifying hypothesis
-    seed_hypothesis(conn, "H3", "needs_revision", decision_minutes_ago=90)
+    def test_revision_marker_present(self):
+        a = build_evidence_addendum(self.orig, self.memories, self.sim_bundles, self.reflection, 0)
+        assert "[Revision 1" in a
 
-    # Seed a simulation bundle for H3 in inbox
-    inbox = tmp / "inbox"
-    inbox.mkdir()
-    bundle = {
-        "manatuabon_schema": "structured_ingest_v1",
-        "payload_type": "simulation/orbital_confinement",
-        "supports_hypothesis": "H3",
-        "summary": "Orbital confinement simulation for Jailer Hypothesis.",
-        "significance": 0.87,
-        "structured_evidence": {"testable_predictions": []}
-    }
-    (inbox / "simulation_bundle_orbital_H3_001.json").write_text(json.dumps(bundle))
+    def test_reflection_revision_included(self):
+        a = build_evidence_addendum(self.orig, self.memories, self.sim_bundles, self.reflection, 0)
+        assert "Schwarzschild" in a
 
-    # Seed a reflection review for H3
-    reflection_details = {
-        "concrete_revisions": ["Add quantitative tidal disruption radius"],
-        "blockers": [],
-        "evidence_requests": [],
-    }
-    conn.execute(
-        "INSERT INTO hypothesis_reviews "
-        "(hypothesis_id, agent_name, verdict, reasoning, objections, review_details, timestamp) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ("H3", "reflection", "needs_revision", "Needs tighter numbers.", "",
-         json.dumps(reflection_details), datetime.now(timezone.utc).isoformat())
-    )
-    conn.commit()
-    conn.close()
+    def test_simulation_evidence_included(self):
+        a = build_evidence_addendum(self.orig, self.memories, self.sim_bundles, self.reflection, 0)
+        assert "1.79 pc" in a
 
-    worker = HypothesisRevisionLoop(
-        db_path=db_path,
-        inbox_path=inbox,
-        dry_run=True,
-    )
-    results = worker.run_once()
+    def test_memory_snippet_included(self):
+        a = build_evidence_addendum(self.orig, self.memories, self.sim_bundles, self.reflection, 0)
+        assert "GRAVITY" in a
 
-    check("run_once returns 1 result", len(results) == 1, f"got {len(results)}")
-    if results:
+    def test_revision_before_original(self):
+        a = build_evidence_addendum(self.orig, self.memories, self.sim_bundles, self.reflection, 0)
+        assert a.index("[Revision") < a.index(self.orig)
+
+    def test_bare_revision_with_no_evidence(self):
+        bare = build_evidence_addendum(self.orig, [], [], {}, revision_cycle=2)
+        assert "[Revision 3" in bare
+        assert self.orig in bare
+
+
+# -- [7] update_tracking / get_revision_cycle ----------------------------------
+
+
+class TestUpdateTracking:
+    def test_initial_cycle_is_zero(self, rev_db):
+        conn = _open(rev_db)
+        assert get_revision_cycle(conn, "H3") == 0
+        conn.close()
+
+    def test_cycle_increments(self, rev_db):
+        conn = _open(rev_db)
+        update_tracking(conn, "H3", "submitted", "first pass")
+        assert get_revision_cycle(conn, "H3") == 1
+        update_tracking(conn, "H3", "submitted", "second pass")
+        assert get_revision_cycle(conn, "H3") == 2
+        conn.close()
+
+    def test_last_status_updated(self, rev_db):
+        conn = _open(rev_db)
+        update_tracking(conn, "H3", "submitted", "first")
+        update_tracking(conn, "H3", "submitted", "second")
+        update_tracking(conn, "H3", "error", "bridge down")
+        row = conn.execute("SELECT * FROM revision_tracking WHERE hypothesis_id = 'H3'").fetchone()
+        assert row["last_status"] == "error"
+        assert "T" in (row["last_attempted"] or "")
+        conn.close()
+
+
+# -- [8] patch_hypothesis_evidence ---------------------------------------------
+
+
+class TestPatchHypothesisEvidence:
+    def test_evidence_field_updated(self, rev_db):
+        conn = _open(rev_db)
+        conn.execute(
+            "INSERT INTO hypotheses (id, title, description, evidence, status) VALUES (?, ?, ?, ?, ?)",
+            ("H3", "Jailer Hypothesis", "desc", "Old evidence.", "active"),
+        )
+        conn.commit()
+        patch_hypothesis_evidence(conn, "H3", "Revised evidence with new data.")
+        row = conn.execute("SELECT evidence, updated_at FROM hypotheses WHERE id='H3'").fetchone()
+        assert "Revised evidence" in row["evidence"]
+        assert row["updated_at"] is not None and "T" in row["updated_at"]
+        conn.close()
+
+
+# -- [9] submit_to_bridge (unreachable) ----------------------------------------
+
+
+class TestSubmitToBridge:
+    def test_returns_error_when_bridge_unreachable(self):
+        result = submit_to_bridge("H3", bridge_url="http://127.0.0.1:19999/api/council/reprocess", timeout=2)
+        assert "error" in result
+        assert isinstance(result["error"], str) and len(result["error"]) > 0
+
+
+# -- [10] HypothesisRevisionLoop.run_once (dry_run) ----------------------------
+
+
+class TestRunOnceDryRun:
+    def test_processes_qualifying_hypothesis(self, rev_db, tmp_path):
+        _seed_hypothesis(rev_db, "H3", "needs_revision", decision_minutes_ago=90)
+
+        inbox = tmp_path / "inbox"
+        inbox.mkdir()
+        bundle = {
+            "manatuabon_schema": "structured_ingest_v1",
+            "payload_type": "simulation/orbital_confinement",
+            "supports_hypothesis": "H3",
+            "summary": "Orbital confinement simulation for Jailer Hypothesis.",
+            "significance": 0.87,
+            "structured_evidence": {"testable_predictions": []},
+        }
+        (inbox / "simulation_bundle_orbital_H3_001.json").write_text(
+            json.dumps(bundle), encoding="utf-8"
+        )
+
+        conn = _open(rev_db)
+        reflection_details = {
+            "concrete_revisions": ["Add quantitative tidal disruption radius"],
+            "blockers": [],
+            "evidence_requests": [],
+        }
+        conn.execute(
+            "INSERT INTO hypothesis_reviews "
+            "(hypothesis_id, agent_name, verdict, reasoning, objections, review_details, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("H3", "reflection", "needs_revision", "Needs tighter numbers.", "",
+             json.dumps(reflection_details), datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        conn.close()
+
+        worker = HypothesisRevisionLoop(db_path=rev_db, inbox_path=inbox, dry_run=True)
+        results = worker.run_once()
+
+        assert len(results) == 1, f"got {len(results)}"
         r = results[0]
-        check("Result hyp_id = H3", r["hyp_id"] == "H3")
-        check("Result status = dry_run", r["status"] == "dry_run")
-        check("Cycle advanced to 1", r["cycle"] == 1)
-        check("sim_bundles = 1", r["sim_bundles"] == 1, f"got {r['sim_bundles']}")
-        check("bridge_result has dry_run flag", r["bridge_result"].get("dry_run") is True)
+        assert r["hyp_id"] == "H3"
+        assert r["status"] == "dry_run"
+        assert r["cycle"] == 1
+        assert r["sim_bundles"] == 1
+        assert r["bridge_result"].get("dry_run") is True
 
 
-# ── [11] HypothesisRevisionLoop.run_once (no candidates) ─────────────────────
-
-print("\n[11] HypothesisRevisionLoop.run_once (no eligible candidates)")
-with tempfile.TemporaryDirectory() as tmp:
-    tmp = Path(tmp)
-    db_path, conn = make_db(tmp)
-
-    # Only 'accepted' hypotheses — none eligible
-    seed_hypothesis(conn, "H10", "accepted", decision_minutes_ago=60)
-    conn.close()
-
-    worker = HypothesisRevisionLoop(db_path=db_path, dry_run=True)
-    results = worker.run_once()
-    check("Empty results when no candidates", len(results) == 0)
+# -- [11] run_once with no candidates -----------------------------------------
 
 
-# ── [12] Cooldown enforcement ─────────────────────────────────────────────────
-
-print("\n[12] Cooldown enforcement")
-with tempfile.TemporaryDirectory() as tmp:
-    tmp = Path(tmp)
-    db_path, conn = make_db(tmp)
-
-    seed_hypothesis(conn, "H3", "needs_revision", decision_minutes_ago=60)
-    # Mark H3 as already attempted very recently
-    conn.execute(
-        "INSERT INTO revision_tracking (hypothesis_id, revision_cycle, last_attempted) VALUES (?, ?, ?)",
-        ("H3", 1, datetime.now(timezone.utc).isoformat())   # just now
-    )
-    conn.commit()
-    conn.close()
-
-    worker = HypothesisRevisionLoop(db_path=db_path, dry_run=True)
-    results = worker.run_once()
-    check("H3 not processed due to cooldown", len(results) == 0, f"got {len(results)}")
+class TestRunOnceNoCandidates:
+    def test_empty_results_when_no_eligible(self, rev_db):
+        _seed_hypothesis(rev_db, "H10", "accepted", decision_minutes_ago=60)
+        worker = HypothesisRevisionLoop(db_path=rev_db, dry_run=True)
+        assert worker.run_once() == []
 
 
-# ── Summary ───────────────────────────────────────────────────────────────────
+# -- [12] Cooldown enforcement ------------------------------------------------
 
-total = passed + failed
-print(f"\n{'='*60}")
-print(f"  {passed}/{total} passed  |  {failed} failed")
-print(f"{'='*60}\n")
-if failed:
-    sys.exit(1)
+
+class TestCooldownEnforcement:
+    def test_recently_attempted_hypothesis_skipped(self, rev_db):
+        _seed_hypothesis(rev_db, "H3", "needs_revision", decision_minutes_ago=60)
+        conn = _open(rev_db)
+        conn.execute(
+            "INSERT INTO revision_tracking (hypothesis_id, revision_cycle, last_attempted) VALUES (?, ?, ?)",
+            ("H3", 1, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        conn.close()
+
+        worker = HypothesisRevisionLoop(db_path=rev_db, dry_run=True)
+        assert worker.run_once() == []

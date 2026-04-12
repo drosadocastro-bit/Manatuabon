@@ -1,17 +1,28 @@
-from langchain_core.messages import HumanMessage
-from langchain_anthropic import ChatAnthropic
+"""
+Smoke test for Anthropic API connectivity.
+Skipped when ANTHROPIC_API_KEY is not set.
+"""
+
 import os
-from dotenv import load_dotenv
+import pytest
 
-load_dotenv("D:/Manatuabon/.env")
-
-llm = ChatAnthropic(
-    model="claude-3-5-sonnet-20240620",
-    api_key=os.environ.get("ANTHROPIC_API_KEY"),
-    max_tokens=256
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="ANTHROPIC_API_KEY not set — skip connectivity smoke test",
 )
-try:
+
+
+def test_anthropic_connection():
+    from dotenv import load_dotenv
+    load_dotenv("D:/Manatuabon/.env")
+
+    from langchain_core.messages import HumanMessage
+    from langchain_anthropic import ChatAnthropic
+
+    llm = ChatAnthropic(
+        model="claude-sonnet-4-20250514",
+        api_key=os.environ["ANTHROPIC_API_KEY"],
+        max_tokens=256,
+    )
     res = llm.invoke([HumanMessage(content="Hi")])
-    print("SUCCESS:", res.content)
-except Exception as e:
-    print("FAIL:", type(e).__name__, str(e))
+    assert res.content, "Empty response from Anthropic"
